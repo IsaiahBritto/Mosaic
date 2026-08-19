@@ -28,6 +28,16 @@ export type Event = {
 export type EventInstance = Event & {
   instanceId: string;
   masterEventId: string;
+  /** Canonical UTC start of this occurrence (for recurrence exceptions). */
+  originalOccurrenceStartAt?: string;
+};
+
+export type RecurrenceException = {
+  id: string;
+  eventId: string;
+  originalStartAt: string;
+  overrideStartAt: string | null;
+  overrideEndAt: string | null;
 };
 
 export type WritableCalendarOption = {

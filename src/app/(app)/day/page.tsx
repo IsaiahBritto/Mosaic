@@ -3,6 +3,7 @@ import { endOfDay, startOfDay } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { parseDateParam } from "@/lib/calendar/date-params";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
+import { getWritableCalendarOptions } from "@/lib/services/event.service";
 import { DayAgenda } from "@/components/calendar/DayAgenda";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 
@@ -39,10 +40,17 @@ export default async function DayPage({ searchParams }: DayPageProps) {
   const dayStart = startOfDay(selectedDate);
   const dayEnd = endOfDay(selectedDate);
   const events = await getExpandedEventsInRange(dayStart, dayEnd);
+  const writableCalendars = await getWritableCalendarOptions(supabase, user.id);
+  const writableCalendarIds = writableCalendars.map((calendar) => calendar.id);
 
   return viewMode === "agenda" ? (
     <DayAgenda date={selectedDate} events={events} timezone={timezone} />
   ) : (
-    <DayTimeline date={selectedDate} events={events} timezone={timezone} />
+    <DayTimeline
+      date={selectedDate}
+      events={events}
+      displayTimezone={timezone}
+      writableCalendarIds={writableCalendarIds}
+    />
   );
 }

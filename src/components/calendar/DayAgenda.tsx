@@ -30,7 +30,7 @@ export function DayAgenda({ date, events, timezone }: DayAgendaProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
+    <div className="flex flex-col gap-3 px-4 py-4">
       {sorted.map((event) => {
         const display = toEventDisplayData(event);
         return (

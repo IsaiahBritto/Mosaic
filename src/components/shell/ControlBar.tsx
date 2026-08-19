@@ -10,11 +10,13 @@ import { Toggle } from "@/components/ui/Toggle";
 type ControlBarProps = {
   selectedDate: Date;
   defaultViewMode?: "timeline" | "agenda";
+  variant?: "full" | "minimal";
 };
 
 export function ControlBar({
   selectedDate,
   defaultViewMode = "timeline",
+  variant = "full",
 }: ControlBarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -47,6 +49,7 @@ export function ControlBar({
   }
 
   const showViewToggle = pathname.startsWith("/day");
+  const showCalendarsLink = variant === "full";
 
   return (
     <div className="flex items-center justify-between border-y border-surface px-4 py-3">
@@ -61,14 +64,18 @@ export function ControlBar({
         <div className="w-12" />
       )}
 
-      <Link href={`/calendars?date=${dateParam}`} className="flex flex-col items-center">
-        <span className="text-sm font-bold uppercase tracking-wide text-text-secondary">
-          Calendars
-        </span>
-        <span className="text-[10px] uppercase tracking-wide text-accent">
-          Select to show
-        </span>
-      </Link>
+      {showCalendarsLink ? (
+        <Link href={`/calendars?date=${dateParam}`} className="flex flex-col items-center">
+          <span className="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            Calendars
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-accent">
+            Select to show
+          </span>
+        </Link>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       <Link
         href={`/events/new?date=${dateParam}`}

@@ -12,13 +12,16 @@ import {
   createEventForUser,
   deleteEventForUser,
   getEventForUser,
+  rescheduleEventTimes,
   updateEventForUser,
 } from "@/lib/services/event.service";
 import type { Event } from "@/types/event";
 import {
   deleteEventSchema,
   eventFormSchema,
+  rescheduleEventSchema,
   type EventFormInput,
+  type RescheduleEventInput,
 } from "@/lib/validation/event";
 
 function revalidateEventViews() {
@@ -161,6 +164,41 @@ export async function getEvent(id: string): Promise<ActionResult<Event>> {
     return actionError(
       "UNKNOWN",
       error instanceof Error ? error.message : "Failed to load event",
+    );
+  }
+}
+
+export async function rescheduleEvent(
+  input: RescheduleEventInput,
+): Promise<ActionResult<Event>> {
+  const parsed = rescheduleEventSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Invalid input",
+    );
+  }
+
+  const auth = await getUserIdOrError();
+  if (isAuthError(auth)) return auth;
+
+  try {
+    const supabase = await createClient();
+    const event = await rescheduleEventTimes(
+      supabase,
+      auth.userId,
+      parsed.data,
+    );
+    revalidateEventViews();
+    revalidatePath(`/events/${parsed.data.eventId}`);
+    return actionSuccess(event);
+  } catch (error) {
+    if (isAppError(error)) {
+      return actionError(error.code, error.message);
+    }
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Failed to reschedule event",
     );
   }
 }

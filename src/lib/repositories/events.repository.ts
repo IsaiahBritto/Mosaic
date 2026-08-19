@@ -289,6 +289,104 @@ export async function deleteEventRecurrence(
   }
 }
 
+type ExceptionRow = {
+  id: string;
+  event_id: string;
+  original_start_at: string;
+  override_start_at: string | null;
+  override_end_at: string | null;
+};
+
+function mapExceptionRow(row: ExceptionRow) {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    originalStartAt: new Date(row.original_start_at).toISOString(),
+    overrideStartAt: row.override_start_at
+      ? new Date(row.override_start_at).toISOString()
+      : null,
+    overrideEndAt: row.override_end_at
+      ? new Date(row.override_end_at).toISOString()
+      : null,
+  };
+}
+
+export async function fetchRecurrenceExceptionsForEvents(
+  supabase: SupabaseClient,
+  eventIds: string[],
+  rangeStart: string,
+  rangeEnd: string,
+) {
+  if (eventIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("event_recurrence_exceptions")
+    .select("id, event_id, original_start_at, override_start_at, override_end_at")
+    .in("event_id", eventIds)
+    .gte("original_start_at", rangeStart)
+    .lte("original_start_at", rangeEnd);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as ExceptionRow[]).map(mapExceptionRow);
+}
+
+export async function upsertRecurrenceException(
+  supabase: SupabaseClient,
+  payload: {
+    eventId: string;
+    originalStartAt: string;
+    overrideStartAt: string | null;
+    overrideEndAt: string | null;
+  },
+) {
+  const { error } = await supabase.from("event_recurrence_exceptions").upsert(
+    {
+      event_id: payload.eventId,
+      original_start_at: new Date(payload.originalStartAt).toISOString(),
+      override_start_at: payload.overrideStartAt
+        ? new Date(payload.overrideStartAt).toISOString()
+        : null,
+      override_end_at: payload.overrideEndAt
+        ? new Date(payload.overrideEndAt).toISOString()
+        : null,
+    },
+    { onConflict: "event_id,original_start_at" },
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updateEventTimesById(
+  supabase: SupabaseClient,
+  eventId: string,
+  startAt: string,
+  endAt: string,
+): Promise<Event> {
+  const { data, error } = await supabase
+    .from("events")
+    .update({
+      start_at: startAt,
+      end_at: endAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", eventId)
+    .select(EVENT_SELECT)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Failed to update event times");
+  }
+
+  return mapEventRow(data as unknown as EventRowJoin);
+}
+
 export async function fetchEventCalendarRole(
   supabase: SupabaseClient,
   userId: string,

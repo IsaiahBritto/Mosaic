@@ -51,7 +51,7 @@ export function MiniMonth({
           return (
             <Link
               key={key}
-              href={`/day?date=${key}`}
+              href={`/month?date=${key}`}
               className={cn(
                 "flex h-4 items-center justify-center rounded-sm text-[9px]",
                 statusCellClass(status),

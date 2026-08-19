@@ -1,44 +1,62 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDateParam } from "@/lib/calendar/date-params";
-import { TIMELINE_HEIGHT_PX, PX_PER_HOUR } from "@/lib/calendar/constants";
 import {
-  eventToPosition,
+  TIMELINE_DAY_START_HOUR,
+  TIMELINE_HEIGHT_PX,
+  PX_PER_HOUR,
+} from "@/lib/calendar/constants";
+import {
+  getTimelineHours,
+  pxToSnappedMinutes,
   toEventDisplayData,
 } from "@/lib/calendar/timeline";
 import type { EventInstance } from "@/types/event";
-import { EventBlock } from "@/components/events/EventBlock";
+import { DraggableEventBlock } from "@/components/events/DraggableEventBlock";
 import { EventCard } from "@/components/events/EventCard";
 import { TimeRail } from "@/components/calendar/TimeRail";
-import { getTimelineHours } from "@/lib/calendar/timeline";
 
 type DayTimelineProps = {
   date: Date;
   events: EventInstance[];
-  timezone: string;
+  displayTimezone: string;
+  writableCalendarIds: string[];
 };
 
-export function DayTimeline({ date, events, timezone }: DayTimelineProps) {
+export function DayTimeline({
+  date,
+  events,
+  displayTimezone,
+  writableCalendarIds,
+}: DayTimelineProps) {
   const router = useRouter();
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [dragActive, setDragActive] = useState(false);
   const dateParam = formatDateParam(date);
   const hours = getTimelineHours();
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (dragActive) {
+      return;
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
     const y = event.clientY - rect.top;
-    const totalMinutes = (y / PX_PER_HOUR) * 60 + hours[0]! * 60;
-    const rounded = Math.round(totalMinutes / 30) * 30;
-    const h = Math.floor(rounded / 60);
-    const m = rounded % 60;
+    const snapped = pxToSnappedMinutes(y);
+    const totalMinutes = TIMELINE_DAY_START_HOUR * 60 + snapped;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     router.push(`/events/new?date=${dateParam}&startTime=${startTime}`);
   }
 
   const timedEvents = events.filter((event) => !event.isAllDay);
+  const writableSet = new Set(writableCalendarIds);
 
   return (
-    <div className="flex-1 overflow-y-auto px-2 pb-6">
+    <div className="px-2 pb-6">
       {events.some((event) => event.isAllDay) ? (
         <div className="mb-3 space-y-2 px-1">
           {events
@@ -47,7 +65,7 @@ export function DayTimeline({ date, events, timezone }: DayTimelineProps) {
               <EventCard
                 key={event.instanceId}
                 event={toEventDisplayData(event)}
-                timezone={timezone}
+                timezone={displayTimezone}
                 editHref={`/events/${event.masterEventId}?date=${dateParam}`}
               />
             ))}
@@ -57,6 +75,7 @@ export function DayTimeline({ date, events, timezone }: DayTimelineProps) {
       <div className="relative flex">
         <TimeRail />
         <div
+          ref={timelineRef}
           className="relative flex-1 cursor-pointer"
           style={{ height: TIMELINE_HEIGHT_PX }}
           onClick={handleEmptyClick}
@@ -83,10 +102,13 @@ export function DayTimeline({ date, events, timezone }: DayTimelineProps) {
               onKeyDown={() => {}}
               role="presentation"
             >
-              <EventBlock
-                event={toEventDisplayData(event)}
-                position={eventToPosition(event, timezone)}
+              <DraggableEventBlock
+                event={event}
+                displayTimezone={displayTimezone}
                 editHref={`/events/${event.masterEventId}?date=${dateParam}`}
+                canEdit={writableSet.has(event.calendarId)}
+                timelineRef={timelineRef}
+                onDragActiveChange={setDragActive}
               />
             </div>
           ))}

@@ -6,24 +6,32 @@ import {
   differenceInCalendarYears,
   endOfDay,
   parseISO,
-  set,
   startOfDay,
 } from "date-fns";
-import type { Event, EventInstance, RecurrenceRule } from "@/types/event";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import type {
+  Event,
+  EventInstance,
+  RecurrenceException,
+  RecurrenceRule,
+} from "@/types/event";
 
 const MAX_INSTANCES = 500;
 const MAX_ITERATIONS = 5000;
 
-function applyMasterTime(day: Date, masterStart: Date, isAllDay: boolean): Date {
+function applyMasterTime(
+  day: Date,
+  masterStartIso: string,
+  timezone: string,
+  isAllDay: boolean,
+): Date {
   if (isAllDay) {
     return startOfDay(day);
   }
-  return set(day, {
-    hours: masterStart.getHours(),
-    minutes: masterStart.getMinutes(),
-    seconds: masterStart.getSeconds(),
-    milliseconds: masterStart.getMilliseconds(),
-  });
+
+  const dateStr = formatInTimeZone(day, timezone, "yyyy-MM-dd");
+  const timeStr = formatInTimeZone(masterStartIso, timezone, "HH:mm:ss");
+  return fromZonedTime(`${dateStr}T${timeStr}`, timezone);
 }
 
 function isRecurrenceMatch(
@@ -91,12 +99,24 @@ function createInstance(
   };
 }
 
+function findException(
+  exceptions: RecurrenceException[],
+  originalStartAt: string,
+): RecurrenceException | undefined {
+  const target = parseISO(originalStartAt).getTime();
+  return exceptions.find(
+    (exception) =>
+      parseISO(exception.originalStartAt).getTime() === target,
+  );
+}
+
 /** Expand a recurring master event into instances within a date range. */
 export function expandRecurrence(
   master: Event,
   rule: RecurrenceRule,
   rangeStart: Date,
   rangeEnd: Date,
+  exceptions: RecurrenceException[] = [],
 ): EventInstance[] {
   const instances: EventInstance[] = [];
   const masterStart = parseISO(master.startAt);
@@ -105,6 +125,9 @@ export function expandRecurrence(
   const recurrenceEnd = rule.endDate
     ? endOfDay(parseISO(`${rule.endDate}T12:00:00`))
     : null;
+  const masterExceptions = exceptions.filter(
+    (exception) => exception.eventId === master.id,
+  );
 
   let cursor = startOfDay(masterStart);
   let iterations = 0;
@@ -121,11 +144,36 @@ export function expandRecurrence(
     }
 
     if (isRecurrenceMatch(cursor, masterStart, rule)) {
-      const instanceStart = applyMasterTime(cursor, masterStart, master.isAllDay);
-      const instanceEnd = new Date(instanceStart.getTime() + durationMs);
+      const instanceStart = applyMasterTime(
+        cursor,
+        master.startAt,
+        master.timezone,
+        master.isAllDay,
+      );
+      const isoStart = instanceStart.toISOString();
+      const exception = findException(masterExceptions, isoStart);
 
-      if (instanceEnd >= rangeStart && instanceStart <= rangeEnd) {
-        instances.push(createInstance(master, instanceStart, durationMs));
+      if (exception && !exception.overrideStartAt) {
+        cursor = addDays(cursor, 1);
+        continue;
+      }
+
+      const resolvedStart = exception?.overrideStartAt
+        ? parseISO(exception.overrideStartAt)
+        : instanceStart;
+      const resolvedEnd = exception?.overrideEndAt
+        ? parseISO(exception.overrideEndAt)
+        : new Date(resolvedStart.getTime() + durationMs);
+
+      if (resolvedEnd >= rangeStart && resolvedStart <= rangeEnd) {
+        instances.push({
+          ...master,
+          instanceId: `${master.id}_${isoStart}`,
+          masterEventId: master.id,
+          originalOccurrenceStartAt: isoStart,
+          startAt: resolvedStart.toISOString(),
+          endAt: resolvedEnd.toISOString(),
+        });
       }
     }
 
@@ -151,12 +199,21 @@ export function expandRecurringEvents(
   events: Event[],
   rangeStart: Date,
   rangeEnd: Date,
+  exceptions: RecurrenceException[] = [],
 ): EventInstance[] {
   const result: EventInstance[] = [];
 
   for (const event of events) {
     if (event.recurrence) {
-      result.push(...expandRecurrence(event, event.recurrence, rangeStart, rangeEnd));
+      result.push(
+        ...expandRecurrence(
+          event,
+          event.recurrence,
+          rangeStart,
+          rangeEnd,
+          exceptions,
+        ),
+      );
     } else if (eventOverlapsRange(event, rangeStart, rangeEnd)) {
       result.push({
         ...event,

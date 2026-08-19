@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
+import { MonthHeader } from "@/components/calendar/MonthHeader";
 import { StatusLegend } from "@/components/calendar/StatusLegend";
 import { parseDateParam } from "@/lib/calendar/date-params";
 import { computeRangeAvailability } from "@/lib/calendar/availability";
@@ -54,6 +55,8 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
+      <MonthHeader monthDate={selectedDate} />
+
       {hasVisibleCalendars ? (
         <>
           <MonthGrid
@@ -64,16 +67,13 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
           />
           <StatusLegend />
         </>
-      ) : (
-        <div className="px-4 py-8 text-center text-sm text-text-secondary">
-          Select calendars to show
-        </div>
-      )}
+      ) : null}
 
       <MonthCalendarSection
         groups={groups}
         visibleIds={visibleIds}
         selectedDate={selectedDate}
+        showEmptyHint={!hasVisibleCalendars}
       />
     </div>
   );

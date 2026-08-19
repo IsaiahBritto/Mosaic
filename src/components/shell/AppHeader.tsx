@@ -8,6 +8,7 @@ type AppHeaderProps = {
   onSave?: () => void;
   saveLabel?: string;
   saveFormId?: string;
+  hideAction?: boolean;
   className?: string;
 };
 
@@ -18,6 +19,7 @@ export function AppHeader({
   onSave,
   saveLabel = "Save",
   saveFormId,
+  hideAction = false,
   className,
 }: AppHeaderProps) {
   return (
@@ -37,7 +39,9 @@ export function AppHeader({
         </Link>
       )}
       <h1 className="text-sm font-bold text-text-secondary">{title}</h1>
-      {saveFormId ? (
+      {hideAction ? (
+        <span className="w-8" aria-hidden />
+      ) : saveFormId ? (
         <button
           type="submit"
           form={saveFormId}

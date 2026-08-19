@@ -2,6 +2,7 @@ import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { expandRecurringEvents } from "@/lib/calendar/recurrence";
 import { getVisibleCalendarIdsForUser } from "@/lib/services/calendar.service";
+import { fetchRecurrenceExceptionsForEvents } from "@/lib/repositories/events.repository";
 import {
   getEventsForDay as getEventsForDayService,
   getEventsInRangeForCalendars,
@@ -50,7 +51,21 @@ export async function expandRecurringEventsInRange(
   rangeStart: Date,
   rangeEnd: Date,
 ): Promise<EventInstance[]> {
-  return expandRecurringEvents(events, rangeStart, rangeEnd);
+  const supabase = await createClient();
+  const recurringIds = events
+    .filter((event) => event.recurrence)
+    .map((event) => event.id);
+  const exceptions =
+    recurringIds.length > 0
+      ? await fetchRecurrenceExceptionsForEvents(
+          supabase,
+          recurringIds,
+          rangeStart.toISOString(),
+          rangeEnd.toISOString(),
+        )
+      : [];
+
+  return expandRecurringEvents(events, rangeStart, rangeEnd, exceptions);
 }
 
 export async function getExpandedEventsInRange(
@@ -59,7 +74,7 @@ export async function getExpandedEventsInRange(
   calendarIds?: string[],
 ): Promise<EventInstance[]> {
   const events = await getEventsInRange(rangeStart, rangeEnd, calendarIds);
-  return expandRecurringEvents(events, rangeStart, rangeEnd);
+  return expandRecurringEventsInRange(events, rangeStart, rangeEnd);
 }
 
 export async function getExpandedEventsForDay(
@@ -72,7 +87,7 @@ export async function getExpandedEventsForDay(
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
   const events = await getEventsForDay(date, ids, tz);
-  return expandRecurringEvents(events, dayStart, dayEnd);
+  return expandRecurringEventsInRange(events, dayStart, dayEnd);
 }
 
 export { parseISO };

@@ -12,6 +12,7 @@ import { computeRangeAvailability } from "@/lib/calendar/availability";
 import type { DayAvailability } from "@/lib/calendar/availability";
 import { createClient } from "@/lib/supabase/server";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
+import { isValidTimezone } from "@/lib/calendar/timezone";
 
 export async function getWeekAvailability(
   dateParam?: string,
@@ -85,6 +86,50 @@ export async function getDayViewModeFromPrefs(): Promise<"timeline" | "agenda"> 
     .maybeSingle();
 
   return data?.day_view_mode === "agenda" ? "agenda" : "timeline";
+}
+
+export async function syncDefaultTimezone(
+  timezone: string,
+): Promise<ActionResult<null>> {
+  if (!isValidTimezone(timezone)) {
+    return actionError("VALIDATION_ERROR", "Invalid timezone");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select("default_timezone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (prefs?.default_timezone === timezone) {
+    return actionSuccess(null);
+  }
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({
+      default_timezone: timezone,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  if (error) {
+    return actionError("UNKNOWN", error.message);
+  }
+
+  revalidatePath("/day");
+  revalidatePath("/month");
+  revalidatePath("/year");
+  return actionSuccess(null);
 }
 
 export { formatDateParam };

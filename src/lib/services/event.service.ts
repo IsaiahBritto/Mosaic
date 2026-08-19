@@ -10,11 +10,13 @@ import {
   fetchWritableCalendars,
   insertEvent,
   updateEventById,
+  updateEventTimesById,
   upsertEventRecurrence,
+  upsertRecurrenceException,
 } from "@/lib/repositories/events.repository";
 import { requireCalendarRole } from "@/lib/services/permissions.service";
 import type { Event, WritableCalendarOption } from "@/types/event";
-import type { EventFormInput } from "@/lib/validation/event";
+import type { EventFormInput, RescheduleEventInput } from "@/lib/validation/event";
 
 function formToPayload(input: EventFormInput) {
   const { startAt, endAt } = buildEventTimestamps({
@@ -142,6 +144,75 @@ export async function deleteEventForUser(
 
   await requireCalendarRole(supabase, userId, existing.calendarId, "editor");
   await deleteEventById(supabase, eventId);
+}
+
+export async function rescheduleEventTimes(
+  supabase: SupabaseClient,
+  userId: string,
+  input: RescheduleEventInput,
+): Promise<Event> {
+  const existing = await fetchEventById(supabase, input.eventId);
+  if (!existing) {
+    throw new AppError("NOT_FOUND", "Event not found", 404);
+  }
+
+  if (existing.isAllDay) {
+    throw new AppError("VALIDATION_ERROR", "All-day events cannot be rescheduled on the timeline", 400);
+  }
+
+  await requireCalendarRole(supabase, userId, existing.calendarId, "editor");
+
+  if (input.scope === "single") {
+    if (existing.recurrence) {
+      await upsertRecurrenceException(supabase, {
+        eventId: input.eventId,
+        originalStartAt: new Date(input.originalStartAt).toISOString(),
+        overrideStartAt: input.startAt,
+        overrideEndAt: input.endAt,
+      });
+      const full = await fetchEventById(supabase, input.eventId);
+      if (!full) {
+        throw new AppError("UNKNOWN", "Failed to load updated event", 500);
+      }
+      return full;
+    }
+
+    return updateEventTimesById(
+      supabase,
+      input.eventId,
+      input.startAt,
+      input.endAt,
+    );
+  }
+
+  const masterStart = parseISO(existing.startAt);
+  const masterEnd = parseISO(existing.endAt);
+  const originalStart = parseISO(input.originalStartAt);
+  const originalEnd = parseISO(input.originalEndAt);
+  const nextStart = parseISO(input.startAt);
+  const nextEnd = parseISO(input.endAt);
+
+  let updatedStart = masterStart;
+  let updatedEnd = masterEnd;
+
+  if (input.mode === "move") {
+    const deltaMs = nextStart.getTime() - originalStart.getTime();
+    updatedStart = new Date(masterStart.getTime() + deltaMs);
+    updatedEnd = new Date(masterEnd.getTime() + deltaMs);
+  } else if (input.mode === "resizeStart") {
+    const deltaMs = nextStart.getTime() - originalStart.getTime();
+    updatedStart = new Date(masterStart.getTime() + deltaMs);
+  } else {
+    const deltaMs = nextEnd.getTime() - originalEnd.getTime();
+    updatedEnd = new Date(masterEnd.getTime() + deltaMs);
+  }
+
+  return updateEventTimesById(
+    supabase,
+    input.eventId,
+    updatedStart.toISOString(),
+    updatedEnd.toISOString(),
+  );
 }
 
 export async function getEventsInRangeForCalendars(
