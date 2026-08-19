@@ -1,13 +1,10 @@
 import {
-  addMinutes,
   differenceInMinutes,
-  endOfDay,
   format,
   isSameDay,
   parseISO,
-  startOfDay,
 } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import {
   BUSY_EVENT_COUNT,
   PARTIAL_THRESHOLD,
@@ -17,6 +14,7 @@ import {
 import {
   addCalendarDays,
   formatCalendarDate,
+  getCalendarDayUtcRange,
   parseCalendarDateParam,
 } from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
@@ -40,8 +38,8 @@ function eventsOnDate(
   events: EventInstance[],
   timezone: string,
 ): EventInstance[] {
-  const dayStart = startOfDay(toZonedTime(date, timezone));
-  const dayEnd = endOfDay(toZonedTime(date, timezone));
+  const dateParam = formatCalendarDate(date, timezone);
+  const { start: dayStart, end: dayEnd } = getCalendarDayUtcRange(dateParam, timezone);
 
   return events.filter((event) => {
     const start = parseISO(event.startAt);
@@ -55,13 +53,14 @@ function busyMinutesOnDate(
   dayEvents: EventInstance[],
   timezone: string,
 ): number {
-  const wakingStart = addMinutes(
-    startOfDay(toZonedTime(date, timezone)),
-    WAKING_START_HOUR * 60,
+  const dateParam = formatCalendarDate(date, timezone);
+  const wakingStart = fromZonedTime(
+    `${dateParam}T${String(WAKING_START_HOUR).padStart(2, "0")}:00:00`,
+    timezone,
   );
-  const wakingEnd = addMinutes(
-    startOfDay(toZonedTime(date, timezone)),
-    WAKING_END_HOUR * 60,
+  const wakingEnd = fromZonedTime(
+    `${dateParam}T${String(WAKING_END_HOUR).padStart(2, "0")}:00:00`,
+    timezone,
   );
   const wakingMinutes = differenceInMinutes(wakingEnd, wakingStart);
 
@@ -72,8 +71,8 @@ function busyMinutesOnDate(
       return wakingMinutes;
     }
 
-    const start = toZonedTime(parseISO(event.startAt), timezone);
-    const end = toZonedTime(parseISO(event.endAt), timezone);
+    const start = parseISO(event.startAt);
+    const end = parseISO(event.endAt);
     const clampedStart = start < wakingStart ? wakingStart : start;
     const clampedEnd = end > wakingEnd ? wakingEnd : end;
 

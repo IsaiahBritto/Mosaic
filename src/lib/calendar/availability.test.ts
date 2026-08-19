@@ -4,7 +4,9 @@ import {
   computeDayAvailability,
   computeRangeAvailability,
 } from "@/lib/calendar/availability";
-import type { EventInstance } from "@/types/event";
+import { expandRecurrence } from "@/lib/calendar/recurrence";
+import { getCalendarDayUtcRange } from "@/lib/calendar/timezone";
+import type { Event, EventInstance } from "@/types/event";
 
 const baseEvent = (overrides: Partial<EventInstance> = {}): EventInstance => ({
   id: "evt-1",
@@ -103,5 +105,43 @@ describe("computeRangeAvailability", () => {
 
     expect(map.get("2026-08-09")?.status).toBe("free");
     expect(map.get("2026-08-15")?.status).toBe("free");
+  });
+
+  it("aligns expanded Mon-Fri recurrence to week strip keys in Chicago TZ", () => {
+    const tz = "America/Chicago";
+    const master: Event = {
+      id: "evt-work",
+      calendarId: "cal-1",
+      calendarColor: "#9379E0",
+      calendarName: "Work",
+      title: "Work",
+      location: "Home",
+      notes: null,
+      startAt: "2026-08-17T13:00:00.000Z",
+      endAt: "2026-08-17T22:00:00.000Z",
+      isAllDay: false,
+      timezone: tz,
+      travelBeforeMinutes: 0,
+      travelAfterMinutes: 0,
+      isHoliday: false,
+      recurrence: {
+        frequency: "weekly",
+        intervalCount: 1,
+        daysOfWeek: [1, 2, 3, 4, 5],
+        endDate: null,
+      },
+    };
+
+    const { start: rangeStart } = getCalendarDayUtcRange("2026-08-16", tz);
+    const { end: rangeEnd } = getCalendarDayUtcRange("2026-08-22", tz);
+    const events = expandRecurrence(master, master.recurrence!, rangeStart, rangeEnd);
+    const map = computeRangeAvailability(rangeStart, rangeEnd, events, tz);
+
+    for (const day of ["2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21"]) {
+      expect(map.get(day)?.status).toBe("busy");
+    }
+
+    expect(map.get("2026-08-16")?.status).toBe("free");
+    expect(map.get("2026-08-22")?.status).toBe("free");
   });
 });

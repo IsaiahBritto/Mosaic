@@ -3,6 +3,7 @@ import { parseISO } from "date-fns";
 import {
   addCalendarDays,
   formatCalendarDate,
+  getCalendarDayOfWeek,
   getCalendarDayUtcRange,
   getTodayCalendarDate,
   getWeekCalendarDateParams,
@@ -96,5 +97,14 @@ describe("getWeekCalendarDateParams", () => {
     const week = getWeekCalendarDateParams("2026-08-09", TZ);
     expect(week[0]).toBe("2026-08-09");
     expect(week[6]).toBe("2026-08-15");
+  });
+});
+
+describe("getCalendarDayOfWeek", () => {
+  it("returns JS-style day of week in display timezone", () => {
+    expect(getCalendarDayOfWeek("2026-08-16", TZ)).toBe(0);
+    expect(getCalendarDayOfWeek("2026-08-17", TZ)).toBe(1);
+    expect(getCalendarDayOfWeek("2026-08-21", TZ)).toBe(5);
+    expect(getCalendarDayOfWeek("2026-08-22", TZ)).toBe(6);
   });
 });

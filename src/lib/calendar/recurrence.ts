@@ -1,14 +1,18 @@
 import {
-  addDays,
   differenceInCalendarDays,
   differenceInCalendarMonths,
   differenceInCalendarWeeks,
   differenceInCalendarYears,
-  endOfDay,
   parseISO,
-  startOfDay,
 } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  getCalendarDayOfWeek,
+  getCalendarDayUtcRange,
+  parseCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import type {
   Event,
   EventInstance,
@@ -20,31 +24,37 @@ const MAX_INSTANCES = 500;
 const MAX_ITERATIONS = 5000;
 
 function applyMasterTime(
-  day: Date,
+  calendarDate: string,
   masterStartIso: string,
   timezone: string,
   isAllDay: boolean,
 ): Date {
   if (isAllDay) {
-    return startOfDay(day);
+    return getCalendarDayUtcRange(calendarDate, timezone).start;
   }
 
-  const dateStr = formatInTimeZone(day, timezone, "yyyy-MM-dd");
   const timeStr = formatInTimeZone(masterStartIso, timezone, "HH:mm:ss");
-  return fromZonedTime(`${dateStr}T${timeStr}`, timezone);
+  return fromZonedTime(`${calendarDate}T${timeStr}`, timezone);
 }
 
 function isRecurrenceMatch(
-  candidateDay: Date,
+  calendarDate: string,
   masterStart: Date,
   rule: RecurrenceRule,
+  timezone: string,
 ): boolean {
-  const day = startOfDay(candidateDay);
-  const masterDay = startOfDay(masterStart);
+  const masterDate = formatCalendarDate(masterStart, timezone);
 
-  if (day < masterDay) {
+  if (calendarDate < masterDate) {
     return false;
   }
+
+  if (rule.endDate && calendarDate > rule.endDate) {
+    return false;
+  }
+
+  const day = parseCalendarDateParam(calendarDate, timezone);
+  const masterDay = parseCalendarDateParam(masterDate, timezone);
 
   switch (rule.frequency) {
     case "daily": {
@@ -52,7 +62,7 @@ function isRecurrenceMatch(
       return diff % rule.intervalCount === 0;
     }
     case "weekly": {
-      if (!rule.daysOfWeek.includes(day.getDay())) {
+      if (!rule.daysOfWeek.includes(getCalendarDayOfWeek(calendarDate, timezone))) {
         return false;
       }
       const diffWeeks = differenceInCalendarWeeks(day, masterDay, {
@@ -61,42 +71,28 @@ function isRecurrenceMatch(
       return diffWeeks % rule.intervalCount === 0;
     }
     case "monthly": {
-      const monthsDiff = differenceInCalendarMonths(day, masterStart);
+      const monthsDiff = differenceInCalendarMonths(day, masterDay);
       if (monthsDiff % rule.intervalCount !== 0) {
         return false;
       }
-      return day.getDate() === masterStart.getDate();
+      return (
+        formatInTimeZone(day, timezone, "d") ===
+        formatInTimeZone(masterDay, timezone, "d")
+      );
     }
     case "yearly": {
-      const yearsDiff = differenceInCalendarYears(day, masterStart);
+      const yearsDiff = differenceInCalendarYears(day, masterDay);
       if (yearsDiff % rule.intervalCount !== 0) {
         return false;
       }
       return (
-        day.getMonth() === masterStart.getMonth() &&
-        day.getDate() === masterStart.getDate()
+        formatInTimeZone(day, timezone, "MM-dd") ===
+        formatInTimeZone(masterDay, timezone, "MM-dd")
       );
     }
     default:
       return false;
   }
-}
-
-function createInstance(
-  master: Event,
-  instanceStart: Date,
-  durationMs: number,
-): EventInstance {
-  const instanceEnd = new Date(instanceStart.getTime() + durationMs);
-  const isoStart = instanceStart.toISOString();
-
-  return {
-    ...master,
-    instanceId: `${master.id}_${isoStart}`,
-    masterEventId: master.id,
-    startAt: isoStart,
-    endAt: instanceEnd.toISOString(),
-  };
 }
 
 function findException(
@@ -119,42 +115,37 @@ export function expandRecurrence(
   exceptions: RecurrenceException[] = [],
 ): EventInstance[] {
   const instances: EventInstance[] = [];
+  const tz = master.timezone;
   const masterStart = parseISO(master.startAt);
   const masterEnd = parseISO(master.endAt);
   const durationMs = masterEnd.getTime() - masterStart.getTime();
-  const recurrenceEnd = rule.endDate
-    ? endOfDay(parseISO(`${rule.endDate}T12:00:00`))
-    : null;
   const masterExceptions = exceptions.filter(
     (exception) => exception.eventId === master.id,
   );
 
-  let cursor = startOfDay(masterStart);
+  let current = formatCalendarDate(masterStart, tz);
+  const loopEnd = formatCalendarDate(rangeEnd, tz);
   let iterations = 0;
 
   while (
-    cursor <= rangeEnd &&
+    current <= loopEnd &&
     iterations < MAX_ITERATIONS &&
     instances.length < MAX_INSTANCES
   ) {
     iterations += 1;
 
-    if (recurrenceEnd && cursor > recurrenceEnd) {
-      break;
-    }
-
-    if (isRecurrenceMatch(cursor, masterStart, rule)) {
+    if (isRecurrenceMatch(current, masterStart, rule, tz)) {
       const instanceStart = applyMasterTime(
-        cursor,
+        current,
         master.startAt,
-        master.timezone,
+        tz,
         master.isAllDay,
       );
       const isoStart = instanceStart.toISOString();
       const exception = findException(masterExceptions, isoStart);
 
       if (exception && !exception.overrideStartAt) {
-        cursor = addDays(cursor, 1);
+        current = addCalendarDays(current, 1, tz);
         continue;
       }
 
@@ -177,7 +168,7 @@ export function expandRecurrence(
       }
     }
 
-    cursor = addDays(cursor, 1);
+    current = addCalendarDays(current, 1, tz);
   }
 
   return instances;

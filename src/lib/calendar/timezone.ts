@@ -186,6 +186,12 @@ export function getWeekCalendarDateParams(
   );
 }
 
+/** JS-style day of week (0=Sun … 6=Sat) for a calendar date in a timezone. */
+export function getCalendarDayOfWeek(dateParam: string, timezone: string): number {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  return Number(formatInTimeZone(anchor, timezone, "i")) % 7;
+}
+
 /** Resolve optional ?date= param to a canonical calendar date string and Date anchor. */
 export function resolveCalendarDateParam(
   value: string | undefined,

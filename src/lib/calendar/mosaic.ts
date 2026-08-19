@@ -1,12 +1,14 @@
 import {
   eachDayOfInterval,
-  endOfDay,
   endOfYear,
   parseISO,
-  startOfDay,
   startOfYear,
 } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  formatCalendarDate,
+  getCalendarDayUtcRange,
+} from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
 
 export type MosaicDay = {
@@ -23,8 +25,8 @@ function eventsOnDate(
   events: EventInstance[],
   timezone: string,
 ): EventInstance[] {
-  const dayStart = startOfDay(toZonedTime(date, timezone));
-  const dayEnd = endOfDay(toZonedTime(date, timezone));
+  const dateParam = formatCalendarDate(date, timezone);
+  const { start: dayStart, end: dayEnd } = getCalendarDayUtcRange(dateParam, timezone);
 
   return events.filter((event) => {
     const start = parseISO(event.startAt);
