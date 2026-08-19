@@ -4,12 +4,8 @@ import {
   type DayAvailability,
 } from "@/lib/calendar/availability";
 import { DAY_LABELS } from "@/lib/calendar/date-params";
-import {
-  getCalendarDayOfWeek,
-  getTodayCalendarDate,
-} from "@/lib/calendar/timezone";
+import { getTodayCalendarDate } from "@/lib/calendar/timezone";
 import { MonthCell } from "@/components/calendar/MonthCell";
-import { cn } from "@/lib/utils/cn";
 
 type MonthGridProps = {
   monthDateParam: string;
@@ -26,7 +22,6 @@ export function MonthGrid({
 }: MonthGridProps) {
   const dates = getMonthGridDates(monthDateParam, timezone);
   const todayParam = getTodayCalendarDate(timezone);
-  const selectedDayOfWeek = getCalendarDayOfWeek(selectedDateParam, timezone);
 
   return (
     <div className="px-2">
@@ -34,10 +29,7 @@ export function MonthGrid({
         {DAY_LABELS.map((label, index) => (
           <span
             key={`${label}-${index}`}
-            className={cn(
-              "text-[10px] uppercase text-text-secondary",
-              selectedDayOfWeek === index && "font-bold text-accent",
-            )}
+            className="text-[10px] uppercase text-text-secondary"
           >
             {label}
           </span>

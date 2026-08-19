@@ -3,6 +3,10 @@ import { parseISO } from "date-fns";
 import {
   addCalendarDays,
   formatCalendarDate,
+  formatDayHeading,
+  formatMonthYearHeading,
+  formatOrdinalDay,
+  formatYearHeading,
   getCalendarDayOfWeek,
   getCalendarDayUtcRange,
   getTodayCalendarDate,
@@ -106,5 +110,34 @@ describe("getCalendarDayOfWeek", () => {
     expect(getCalendarDayOfWeek("2026-08-17", TZ)).toBe(1);
     expect(getCalendarDayOfWeek("2026-08-21", TZ)).toBe(5);
     expect(getCalendarDayOfWeek("2026-08-22", TZ)).toBe(6);
+  });
+});
+
+describe("formatOrdinalDay", () => {
+  it("formats English ordinals", () => {
+    expect(formatOrdinalDay(1)).toBe("1st");
+    expect(formatOrdinalDay(2)).toBe("2nd");
+    expect(formatOrdinalDay(3)).toBe("3rd");
+    expect(formatOrdinalDay(4)).toBe("4th");
+    expect(formatOrdinalDay(11)).toBe("11th");
+    expect(formatOrdinalDay(21)).toBe("21st");
+  });
+});
+
+describe("formatDayHeading", () => {
+  it("returns weekday and ordinal date in display timezone", () => {
+    expect(formatDayHeading("2026-08-19", TZ)).toBe("Wednesday the 19th");
+  });
+});
+
+describe("formatMonthYearHeading", () => {
+  it("returns uppercase month and year in display timezone", () => {
+    expect(formatMonthYearHeading("2026-08-19", TZ)).toBe("AUGUST 2026");
+  });
+});
+
+describe("formatYearHeading", () => {
+  it("returns the year from a calendar date param", () => {
+    expect(formatYearHeading("2026-08-19")).toBe("2026");
   });
 });

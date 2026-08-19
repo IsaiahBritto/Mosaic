@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ViewNav } from "@/components/shell/ViewNav";
+import { PeriodNav } from "@/components/shell/PeriodNav";
 import { WeekStrip } from "@/components/shell/WeekStrip";
 import { ControlBar } from "@/components/shell/ControlBar";
 import { CollapsibleControlBar } from "@/components/shell/CollapsibleControlBar";
@@ -49,7 +50,12 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
         <header className="sticky top-0 z-20 shrink-0 bg-background">
-          <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
+          <ViewNav dateParam={dateParam} />
+          <PeriodNav
+            dateParam={dateParam}
+            displayTimezone={displayTimezone}
+            mode="day"
+          />
           <WeekStrip
             dateParam={dateParam}
             selectedDate={selectedDate}
@@ -74,7 +80,12 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
   if (isMonth) {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-        <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
+        <ViewNav dateParam={dateParam} />
+        <PeriodNav
+          dateParam={dateParam}
+          displayTimezone={displayTimezone}
+          mode="month"
+        />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     );
@@ -83,11 +94,11 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
   if (isYear) {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-        <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
-        <ControlBar
-          selectedDate={selectedDate}
+        <ViewNav dateParam={dateParam} />
+        <PeriodNav
+          dateParam={dateParam}
           displayTimezone={displayTimezone}
-          variant="minimal"
+          mode="year"
         />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
@@ -96,7 +107,7 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-      <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
+      <ViewNav dateParam={dateParam} />
       <ControlBar selectedDate={selectedDate} displayTimezone={displayTimezone} />
       <main className="flex flex-1 flex-col">{children}</main>
     </div>

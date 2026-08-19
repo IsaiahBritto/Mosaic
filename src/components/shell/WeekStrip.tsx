@@ -63,15 +63,18 @@ export function WeekStrip({
             <span className="text-[10px] uppercase text-text-secondary">
               {DAY_LABELS[index]}
             </span>
-            <span
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full text-sm",
-                isSelected && "font-bold text-text-primary",
-                !isSelected && isToday && "text-accent",
-                !isSelected && !isToday && "text-text-secondary",
-              )}
-            >
-              {formatInTimeZone(date, displayTimezone, "d")}
+            <span className="flex h-10 w-full items-center justify-center">
+              <span
+                className={cn(
+                  (isSelected || isToday) && "text-2xl font-extrabold",
+                  !isSelected && !isToday && "text-sm",
+                  isToday && "text-accent",
+                  !isToday && isSelected && "text-text-primary",
+                  !isToday && !isSelected && "text-text-secondary",
+                )}
+              >
+                {formatInTimeZone(date, displayTimezone, "d")}
+              </span>
             </span>
             <div className="flex h-1.5 justify-center gap-0.5">
               {(dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (

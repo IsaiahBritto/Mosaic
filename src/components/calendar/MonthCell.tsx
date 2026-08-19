@@ -60,11 +60,11 @@ export function MonthCell({
       <span
         className={cn(
           "text-center",
-          compact ? "text-[10px]" : "text-sm",
-          isSelected && "font-bold text-text-primary",
-          !isSelected && isToday && "font-bold text-accent",
-          !isSelected && !isToday && status === "holiday" && "text-status-holiday",
-          !isSelected && !isToday && status !== "holiday" && "text-text-primary",
+          compact ? "text-[10px]" : isToday || isSelected ? "text-2xl font-extrabold" : "text-sm",
+          isToday && "text-accent",
+          !isToday && isSelected && "font-bold text-text-primary",
+          !isToday && !isSelected && status === "holiday" && "text-status-holiday",
+          !isToday && !isSelected && status !== "holiday" && "text-text-primary",
         )}
       >
         {Number(dateParam.slice(8))}

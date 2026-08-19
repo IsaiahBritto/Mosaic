@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
-import { MonthHeader } from "@/components/calendar/MonthHeader";
 import { StatusLegend } from "@/components/calendar/StatusLegend";
 import {
   computeRangeAvailability,
@@ -60,8 +59,6 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MonthHeader monthDateParam={dateParam} timezone={timezone} />
-
       {hasVisibleCalendars ? (
         <>
           <MonthGrid

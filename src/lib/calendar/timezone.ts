@@ -192,6 +192,47 @@ export function getCalendarDayOfWeek(dateParam: string, timezone: string): numbe
   return Number(formatInTimeZone(anchor, timezone, "i")) % 7;
 }
 
+/** English ordinal day: 1st, 2nd, 3rd, 4th, … */
+export function formatOrdinalDay(day: number): string {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) {
+    return `${day}th`;
+  }
+
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+/** "Wednesday the 19th" in display timezone. */
+export function formatDayHeading(dateParam: string, timezone: string): string {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  const weekday = formatInTimeZone(anchor, timezone, "EEEE");
+  const day = Number(formatInTimeZone(anchor, timezone, "d"));
+  return `${weekday} the ${formatOrdinalDay(day)}`;
+}
+
+/** "AUGUST 2026" in display timezone. */
+export function formatMonthYearHeading(dateParam: string, timezone: string): string {
+  return formatInTimeZone(
+    parseCalendarDateParam(dateParam, timezone),
+    timezone,
+    "MMMM yyyy",
+  ).toUpperCase();
+}
+
+/** "2026" from a calendar date param. */
+export function formatYearHeading(dateParam: string): string {
+  return dateParam.slice(0, 4);
+}
+
 /** Resolve optional ?date= param to a canonical calendar date string and Date anchor. */
 export function resolveCalendarDateParam(
   value: string | undefined,
