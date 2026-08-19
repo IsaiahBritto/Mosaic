@@ -1,0 +1,90 @@
+"use server";
+
+import { endOfDay, startOfDay } from "date-fns";
+import { revalidatePath } from "next/cache";
+import {
+  actionError,
+  actionSuccess,
+  type ActionResult,
+} from "@/lib/actions/types";
+import { parseDateParam, getWeekDates, formatDateParam } from "@/lib/calendar/date-params";
+import { computeRangeAvailability } from "@/lib/calendar/availability";
+import type { DayAvailability } from "@/lib/calendar/availability";
+import { createClient } from "@/lib/supabase/server";
+import { getExpandedEventsInRange } from "@/lib/queries/events";
+
+export async function getWeekAvailability(
+  dateParam?: string,
+): Promise<Record<string, DayAvailability>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {};
+  }
+
+  const selectedDate = parseDateParam(dateParam);
+  const weekDates = getWeekDates(selectedDate);
+  const rangeStart = startOfDay(weekDates[0]!);
+  const rangeEnd = endOfDay(weekDates[6]!);
+
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select("default_timezone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const timezone = prefs?.default_timezone ?? "America/New_York";
+  const events = await getExpandedEventsInRange(rangeStart, rangeEnd);
+  const map = computeRangeAvailability(rangeStart, rangeEnd, events, timezone);
+
+  return Object.fromEntries(map.entries());
+}
+
+export async function setDayViewMode(
+  mode: "timeline" | "agenda",
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({ day_view_mode: mode, updated_at: new Date().toISOString() })
+    .eq("user_id", user.id);
+
+  if (error) {
+    return actionError("UNKNOWN", error.message);
+  }
+
+  revalidatePath("/day");
+  return actionSuccess(null);
+}
+
+export async function getDayViewModeFromPrefs(): Promise<"timeline" | "agenda"> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return "timeline";
+  }
+
+  const { data } = await supabase
+    .from("user_preferences")
+    .select("day_view_mode")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return data?.day_view_mode === "agenda" ? "agenda" : "timeline";
+}
+
+export { formatDateParam };
