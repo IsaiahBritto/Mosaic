@@ -6,9 +6,9 @@ import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { MonthHeader } from "@/components/calendar/MonthHeader";
 import { StatusLegend } from "@/components/calendar/StatusLegend";
-import { parseDateParam } from "@/lib/calendar/date-params";
 import { computeRangeAvailability } from "@/lib/calendar/availability";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
+import { resolveCalendarDateParam } from "@/lib/calendar/timezone";
 
 type MonthPageProps = {
   searchParams: Promise<{ date?: string }>;
@@ -16,7 +16,6 @@ type MonthPageProps = {
 
 export default async function MonthPage({ searchParams }: MonthPageProps) {
   const params = await searchParams;
-  const selectedDate = parseDateParam(params.date);
 
   const supabase = await createClient();
   const {
@@ -36,6 +35,7 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     .maybeSingle();
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
+  const { selectedDate } = resolveCalendarDateParam(params.date, timezone);
   const monthStart = startOfMonth(selectedDate);
   const monthEnd = endOfMonth(selectedDate);
   const gridStart = startOfDay(monthStart);

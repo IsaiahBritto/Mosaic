@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
-import { endOfDay, startOfDay } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
-import { parseDateParam } from "@/lib/calendar/date-params";
-import { getExpandedEventsInRange } from "@/lib/queries/events";
 import { getWritableCalendarOptions } from "@/lib/services/event.service";
+import { getExpandedEventsInRange } from "@/lib/queries/events";
+import {
+  getCalendarDayUtcRange,
+  resolveCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import { DayAgenda } from "@/components/calendar/DayAgenda";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 
@@ -13,7 +15,6 @@ type DayPageProps = {
 
 export default async function DayPage({ searchParams }: DayPageProps) {
   const params = await searchParams;
-  const selectedDate = parseDateParam(params.date);
 
   const supabase = await createClient();
   const {
@@ -31,14 +32,14 @@ export default async function DayPage({ searchParams }: DayPageProps) {
     .maybeSingle();
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
+  const { dateParam, selectedDate } = resolveCalendarDateParam(params.date, timezone);
   const savedMode = prefs?.day_view_mode === "agenda" ? "agenda" : "timeline";
   const viewMode =
     params.view === "agenda" || params.view === "timeline"
       ? params.view
       : savedMode;
 
-  const dayStart = startOfDay(selectedDate);
-  const dayEnd = endOfDay(selectedDate);
+  const { start: dayStart, end: dayEnd } = getCalendarDayUtcRange(dateParam, timezone);
   const events = await getExpandedEventsInRange(dayStart, dayEnd);
   const writableCalendars = await getWritableCalendarOptions(supabase, user.id);
   const writableCalendarIds = writableCalendars.map((calendar) => calendar.id);

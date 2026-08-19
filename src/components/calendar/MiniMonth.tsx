@@ -1,25 +1,28 @@
 import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   getMonthGridDates,
   isDateInMonth,
   type DayAvailability,
 } from "@/lib/calendar/availability";
-import { formatDateParam } from "@/lib/calendar/date-params";
 import { statusCellClass } from "@/components/calendar/MonthCell";
+import { formatCalendarDate } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
 type MiniMonthProps = {
   monthDate: Date;
-  selectedDate: Date;
+  selectedDateParam: string;
   availabilityMap: Map<string, DayAvailability>;
+  timezone: string;
 };
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 export function MiniMonth({
   monthDate,
-  selectedDate,
+  selectedDateParam,
   availabilityMap,
+  timezone,
 }: MiniMonthProps) {
   const dates = getMonthGridDates(monthDate);
   const monthName = monthDate
@@ -40,13 +43,10 @@ export function MiniMonth({
       </div>
       <div className="grid grid-cols-7 gap-0.5">
         {dates.map((date) => {
-          const key = formatDateParam(date);
+          const key = formatCalendarDate(date, timezone);
           const availability = availabilityMap.get(key);
           const status = availability?.status ?? "free";
-          const isSelected =
-            date.getFullYear() === selectedDate.getFullYear() &&
-            date.getMonth() === selectedDate.getMonth() &&
-            date.getDate() === selectedDate.getDate();
+          const isSelected = key === selectedDateParam;
 
           return (
             <Link
@@ -59,7 +59,7 @@ export function MiniMonth({
                 isSelected && "ring-1 ring-text-primary",
               )}
             >
-              {date.getDate()}
+              {formatInTimeZone(date, timezone, "d")}
             </Link>
           );
         })}

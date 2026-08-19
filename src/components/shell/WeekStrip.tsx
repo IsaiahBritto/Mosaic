@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { isSameDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { getWeekAvailability } from "@/lib/actions/views";
 import type { DayAvailability } from "@/lib/calendar/availability";
+import { DAY_LABELS } from "@/lib/calendar/date-params";
 import {
-  DAY_LABELS,
-  formatDateParam,
-  getWeekDates,
-} from "@/lib/calendar/date-params";
+  formatCalendarDate,
+  getWeekCalendarDateParams,
+  parseCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
 const DOT_COLORS = {
@@ -20,29 +21,36 @@ const DOT_COLORS = {
 } as const;
 
 type WeekStripProps = {
+  dateParam: string;
   selectedDate: Date;
+  displayTimezone: string;
 };
 
-export function WeekStrip({ selectedDate }: WeekStripProps) {
-  const weekDates = getWeekDates(selectedDate);
+export function WeekStrip({
+  dateParam,
+  selectedDate,
+  displayTimezone,
+}: WeekStripProps) {
+  const weekDateParams = getWeekCalendarDateParams(dateParam, displayTimezone);
   const [availability, setAvailability] = useState<Record<string, DayAvailability>>({});
 
   useEffect(() => {
-    getWeekAvailability(formatDateParam(selectedDate)).then(setAvailability);
-  }, [selectedDate]);
+    getWeekAvailability(dateParam).then(setAvailability);
+  }, [dateParam]);
 
   return (
     <div className="grid grid-cols-7 gap-1 px-3 pb-2 text-center">
-      {weekDates.map((date, index) => {
-        const isSelected = isSameDay(date, selectedDate);
-        const isToday = isSameDay(date, new Date());
-        const dateParam = formatDateParam(date);
-        const dayAvailability = availability[dateParam];
+      {weekDateParams.map((weekDateParam, index) => {
+        const date = parseCalendarDateParam(weekDateParam, displayTimezone);
+        const isSelected = formatCalendarDate(selectedDate, displayTimezone) === weekDateParam;
+        const isToday =
+          formatCalendarDate(new Date(), displayTimezone) === weekDateParam;
+        const dayAvailability = availability[weekDateParam];
 
         return (
           <Link
-            key={dateParam}
-            href={`/day?date=${dateParam}`}
+            key={weekDateParam}
+            href={`/day?date=${weekDateParam}`}
             className={cn(
               "flex flex-col items-center gap-1 rounded-md py-1",
               dayAvailability?.status === "free" && "bg-status-free/10",
@@ -63,12 +71,12 @@ export function WeekStrip({ selectedDate }: WeekStripProps) {
                 !isSelected && !isToday && "text-text-secondary",
               )}
             >
-              {date.getDate()}
+              {formatInTimeZone(date, displayTimezone, "d")}
             </span>
             <div className="flex h-1.5 justify-center gap-0.5">
               {(dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (
                 <span
-                  key={`${dateParam}-${dotIndex}`}
+                  key={`${weekDateParam}-${dotIndex}`}
                   className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
                 />
               ))}

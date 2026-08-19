@@ -1,5 +1,5 @@
-import { endOfDay, parseISO } from "date-fns";
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { endOfDay, parseISO, addDays, getDay, startOfDay } from "date-fns";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -92,4 +92,64 @@ export function isValidTimezone(tz: string): boolean {
 
 export function endOfDayUtc(date: string, tz: string): string {
   return fromZonedTime(endOfDay(parseISO(`${date}T12:00:00`)), tz).toISOString();
+}
+
+/** Format a Date as YYYY-MM-DD in the user's display timezone. */
+export function formatCalendarDate(date: Date, timezone: string): string {
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd");
+}
+
+/** Parse a calendar date param as noon local time for safe date arithmetic. */
+export function parseCalendarDateParam(value: string, timezone: string): Date {
+  if (!DATE_PATTERN.test(value)) {
+    throw new Error("Invalid date format");
+  }
+  return fromZonedTime(`${value}T12:00:00`, timezone);
+}
+
+/** UTC instants for the start/end of a calendar day in the display timezone. */
+export function getCalendarDayUtcRange(
+  dateParam: string,
+  timezone: string,
+): { start: Date; end: Date } {
+  return {
+    start: parseISO(
+      localToUtc(dateParam, undefined, timezone, { isAllDay: true, isEnd: false }),
+    ),
+    end: parseISO(
+      localToUtc(dateParam, undefined, timezone, { isAllDay: true, isEnd: true }),
+    ),
+  };
+}
+
+/** Today's calendar date (YYYY-MM-DD) in the display timezone. */
+export function getTodayCalendarDate(timezone: string): string {
+  return formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
+}
+
+/** Sun–Sat calendar date params for the week containing the anchor date. */
+export function getWeekCalendarDateParams(
+  dateParam: string,
+  timezone: string,
+): string[] {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  const localAnchor = toZonedTime(anchor, timezone);
+  const weekStart = addDays(startOfDay(localAnchor), -getDay(localAnchor));
+
+  return Array.from({ length: 7 }, (_, index) =>
+    formatCalendarDate(addDays(weekStart, index), timezone),
+  );
+}
+
+/** Resolve optional ?date= param to a canonical calendar date string and Date anchor. */
+export function resolveCalendarDateParam(
+  value: string | undefined,
+  timezone: string,
+): { dateParam: string; selectedDate: Date } {
+  const dateParam =
+    value && DATE_PATTERN.test(value) ? value : getTodayCalendarDate(timezone);
+  return {
+    dateParam,
+    selectedDate: parseCalendarDateParam(dateParam, timezone),
+  };
 }

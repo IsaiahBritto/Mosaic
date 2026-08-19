@@ -7,7 +7,7 @@ import { WeekStrip } from "@/components/shell/WeekStrip";
 import { ControlBar } from "@/components/shell/ControlBar";
 import { CollapsibleControlBar } from "@/components/shell/CollapsibleControlBar";
 import { TimezoneSync } from "@/components/shell/TimezoneSync";
-import { parseDateParam } from "@/lib/calendar/date-params";
+import { resolveCalendarDateParam } from "@/lib/calendar/timezone";
 import { useScrollCollapse } from "@/hooks/useScrollCollapse";
 
 function isFullScreenRoute(pathname: string): boolean {
@@ -19,10 +19,18 @@ function isFullScreenRoute(pathname: string): boolean {
   );
 }
 
-function AppLayoutInner({ children }: { children: React.ReactNode }) {
+type AppLayoutInnerProps = {
+  children: React.ReactNode;
+  displayTimezone: string;
+};
+
+function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedDate = parseDateParam(searchParams.get("date") ?? undefined);
+  const { dateParam, selectedDate } = resolveCalendarDateParam(
+    searchParams.get("date") ?? undefined,
+    displayTimezone,
+  );
   const fullScreen = isFullScreenRoute(pathname);
   const isDay = pathname.startsWith("/day");
   const isMonth = pathname.startsWith("/month");
@@ -42,7 +50,11 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
         <header className="sticky top-0 z-20 shrink-0 bg-background">
           <ViewNav selectedDate={selectedDate} />
-          <WeekStrip selectedDate={selectedDate} />
+          <WeekStrip
+            dateParam={dateParam}
+            selectedDate={selectedDate}
+            displayTimezone={displayTimezone}
+          />
           <CollapsibleControlBar selectedDate={selectedDate} collapsed={collapsed} />
         </header>
         <main
@@ -83,11 +95,19 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AppLayoutClient({ children }: { children: React.ReactNode }) {
+type AppLayoutClientProps = {
+  children: React.ReactNode;
+  displayTimezone: string;
+};
+
+export function AppLayoutClient({
+  children,
+  displayTimezone,
+}: AppLayoutClientProps) {
   return (
     <Suspense fallback={<div className="mx-auto min-h-full max-w-md bg-background" />}>
       <TimezoneSync />
-      <AppLayoutInner>{children}</AppLayoutInner>
+      <AppLayoutInner displayTimezone={displayTimezone}>{children}</AppLayoutInner>
     </Suspense>
   );
 }

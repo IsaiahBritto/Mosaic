@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { endOfYear, startOfYear } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
-import { parseDateParam } from "@/lib/calendar/date-params";
 import { computeRangeAvailability } from "@/lib/calendar/availability";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
+import { resolveCalendarDateParam } from "@/lib/calendar/timezone";
 import { YearGrid } from "@/components/calendar/YearGrid";
 
 type YearPageProps = {
@@ -12,8 +12,6 @@ type YearPageProps = {
 
 export default async function YearPage({ searchParams }: YearPageProps) {
   const params = await searchParams;
-  const selectedDate = parseDateParam(params.date);
-  const year = selectedDate.getFullYear();
 
   const supabase = await createClient();
   const {
@@ -31,6 +29,8 @@ export default async function YearPage({ searchParams }: YearPageProps) {
     .maybeSingle();
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
+  const { dateParam } = resolveCalendarDateParam(params.date, timezone);
+  const year = Number(dateParam.slice(0, 4));
   const yearStart = startOfYear(new Date(year, 0, 1));
   const yearEnd = endOfYear(new Date(year, 0, 1));
 
@@ -46,8 +46,9 @@ export default async function YearPage({ searchParams }: YearPageProps) {
     <div className="flex flex-1 flex-col overflow-y-auto pt-2">
       <YearGrid
         year={year}
-        selectedDate={selectedDate}
+        selectedDateParam={dateParam}
         availabilityMap={availabilityMap}
+        timezone={timezone}
       />
     </div>
   );
