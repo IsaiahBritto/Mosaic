@@ -1,5 +1,5 @@
-import { endOfDay, parseISO, addDays, getDay, startOfDay } from "date-fns";
-import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
+import { endOfDay, parseISO, addDays, addMonths, addWeeks, addYears } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -127,17 +127,62 @@ export function getTodayCalendarDate(timezone: string): string {
   return formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
 }
 
+/** Add calendar days to a YYYY-MM-DD param in the display timezone. */
+export function addCalendarDays(
+  dateParam: string,
+  delta: number,
+  timezone: string,
+): string {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  return formatCalendarDate(addDays(anchor, delta), timezone);
+}
+
+export type CalendarDateShiftUnit = "day" | "week" | "month" | "year";
+
+/** Shift a calendar date param by unit in the display timezone. */
+export function shiftCalendarDateParam(
+  dateParam: string,
+  unit: CalendarDateShiftUnit,
+  delta: number,
+  timezone: string,
+): string {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  let next: Date;
+
+  switch (unit) {
+    case "day":
+      next = addDays(anchor, delta);
+      break;
+    case "week":
+      next = addWeeks(anchor, delta);
+      break;
+    case "month":
+      next = addMonths(anchor, delta);
+      break;
+    case "year":
+      next = addYears(anchor, delta);
+      break;
+  }
+
+  return formatCalendarDate(next, timezone);
+}
+
+/** Build a path with ?date=YYYY-MM-DD. */
+export function withCalendarDateParam(path: string, dateParam: string): string {
+  return `${path}?date=${dateParam}`;
+}
+
 /** Sun–Sat calendar date params for the week containing the anchor date. */
 export function getWeekCalendarDateParams(
   dateParam: string,
   timezone: string,
 ): string[] {
   const anchor = parseCalendarDateParam(dateParam, timezone);
-  const localAnchor = toZonedTime(anchor, timezone);
-  const weekStart = addDays(startOfDay(localAnchor), -getDay(localAnchor));
+  const isoDow = Number(formatInTimeZone(anchor, timezone, "i"));
+  const daysFromSunday = isoDow % 7;
 
   return Array.from({ length: 7 }, (_, index) =>
-    formatCalendarDate(addDays(weekStart, index), timezone),
+    addCalendarDays(dateParam, -daysFromSunday + index, timezone),
   );
 }
 

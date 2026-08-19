@@ -5,12 +5,14 @@ import { cn } from "@/lib/utils/cn";
 
 type CollapsibleControlBarProps = {
   selectedDate: Date;
+  displayTimezone: string;
   collapsed: boolean;
   variant?: "full" | "minimal";
 };
 
 export function CollapsibleControlBar({
   selectedDate,
+  displayTimezone,
   collapsed,
   variant = "full",
 }: CollapsibleControlBarProps) {
@@ -21,7 +23,11 @@ export function CollapsibleControlBar({
         collapsed ? "max-h-0 opacity-0" : "max-h-20 opacity-100",
       )}
     >
-      <ControlBar selectedDate={selectedDate} variant={variant} />
+      <ControlBar
+        selectedDate={selectedDate}
+        displayTimezone={displayTimezone}
+        variant={variant}
+      />
     </div>
   );
 }

@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { formatDateParam, shiftDate, withDateParam } from "@/lib/calendar/date-params";
+import {
+  shiftCalendarDateParam,
+  withCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
 type ViewNavProps = {
-  selectedDate: Date;
+  dateParam: string;
+  displayTimezone: string;
 };
 
 const VIEWS = [
@@ -26,7 +30,7 @@ function getCarouselViews(activeIndex: number) {
   ];
 }
 
-export function ViewNav({ selectedDate }: ViewNavProps) {
+export function ViewNav({ dateParam, displayTimezone }: ViewNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,7 +42,7 @@ export function ViewNav({ selectedDate }: ViewNavProps) {
   const carouselViews = getCarouselViews(activeIndex);
 
   function shiftAndNavigate(unit: "day" | "week" | "month" | "year", delta: number) {
-    const next = formatDateParam(shiftDate(selectedDate, unit, delta));
+    const next = shiftCalendarDateParam(dateParam, unit, delta, displayTimezone);
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", next);
     router.push(`${pathname}?${params.toString()}`);
@@ -67,7 +71,7 @@ export function ViewNav({ selectedDate }: ViewNavProps) {
         {carouselViews.map(({ view, slot }) => (
           <Link
             key={view.key}
-            href={withDateParam(view.path, selectedDate)}
+            href={withCalendarDateParam(view.path, dateParam)}
             className={cn(
               "text-center transition-colors duration-300",
               slot === "active"

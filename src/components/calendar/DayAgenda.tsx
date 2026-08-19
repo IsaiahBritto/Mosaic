@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDateParam } from "@/lib/calendar/date-params";
+import { formatCalendarDate } from "@/lib/calendar/timezone";
 import { toEventDisplayData } from "@/lib/calendar/timeline";
 import type { EventInstance } from "@/types/event";
 import { EventCard } from "@/components/events/EventCard";
@@ -13,7 +13,7 @@ type DayAgendaProps = {
 };
 
 export function DayAgenda({ date, events, timezone }: DayAgendaProps) {
-  const dateParam = formatDateParam(date);
+  const dateParam = formatCalendarDate(date, timezone);
   const sorted = [...events].sort(
     (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
   );

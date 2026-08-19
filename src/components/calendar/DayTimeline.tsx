@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatDateParam } from "@/lib/calendar/date-params";
+import { formatCalendarDate } from "@/lib/calendar/timezone";
 import {
   TIMELINE_DAY_START_HOUR,
   TIMELINE_HEIGHT_PX,
@@ -34,7 +34,7 @@ export function DayTimeline({
   const router = useRouter();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const dateParam = formatDateParam(date);
+  const dateParam = formatCalendarDate(date, displayTimezone);
   const hours = getTimelineHours();
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {

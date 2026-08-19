@@ -49,13 +49,17 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
         <header className="sticky top-0 z-20 shrink-0 bg-background">
-          <ViewNav selectedDate={selectedDate} />
+          <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
           <WeekStrip
             dateParam={dateParam}
             selectedDate={selectedDate}
             displayTimezone={displayTimezone}
           />
-          <CollapsibleControlBar selectedDate={selectedDate} collapsed={collapsed} />
+          <CollapsibleControlBar
+            selectedDate={selectedDate}
+            displayTimezone={displayTimezone}
+            collapsed={collapsed}
+          />
         </header>
         <main
           className="flex flex-1 flex-col overflow-y-auto"
@@ -70,7 +74,7 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
   if (isMonth) {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-        <ViewNav selectedDate={selectedDate} />
+        <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     );
@@ -79,8 +83,12 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
   if (isYear) {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-        <ViewNav selectedDate={selectedDate} />
-        <ControlBar selectedDate={selectedDate} variant="minimal" />
+        <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
+        <ControlBar
+          selectedDate={selectedDate}
+          displayTimezone={displayTimezone}
+          variant="minimal"
+        />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     );
@@ -88,8 +96,8 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col">
-      <ViewNav selectedDate={selectedDate} />
-      <ControlBar selectedDate={selectedDate} />
+      <ViewNav dateParam={dateParam} displayTimezone={displayTimezone} />
+      <ControlBar selectedDate={selectedDate} displayTimezone={displayTimezone} />
       <main className="flex flex-1 flex-col">{children}</main>
     </div>
   );

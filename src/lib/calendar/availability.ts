@@ -14,6 +14,11 @@ import {
   WAKING_END_HOUR,
   WAKING_START_HOUR,
 } from "@/lib/calendar/constants";
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  parseCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
 
 export type DayStatus = "free" | "busy" | "partial" | "holiday";
@@ -158,12 +163,17 @@ export function computeRangeAvailability(
   timezone: string,
 ): Map<string, DayAvailability> {
   const map = new Map<string, DayAvailability>();
-  let cursor = startOfDay(startDate);
+  let current = formatCalendarDate(startDate, timezone);
+  const end = formatCalendarDate(endDate, timezone);
 
-  while (cursor <= endDate) {
-    const availability = computeDayAvailability(cursor, events, timezone);
+  while (current <= end) {
+    const availability = computeDayAvailability(
+      parseCalendarDateParam(current, timezone),
+      events,
+      timezone,
+    );
     map.set(availability.date, availability);
-    cursor = addMinutes(cursor, 24 * 60);
+    current = addCalendarDays(current, 1, timezone);
   }
 
   return map;

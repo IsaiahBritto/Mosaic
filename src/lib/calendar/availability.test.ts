@@ -78,4 +78,30 @@ describe("computeRangeAvailability", () => {
     expect(map.size).toBeGreaterThanOrEqual(3);
     expect(map.has("2026-06-02")).toBe(true);
   });
+
+  it("aligns Mon–Fri work events to correct calendar keys in Chicago TZ", () => {
+    const tz = "America/Chicago";
+    const workDays = ["2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14"];
+    const events: EventInstance[] = workDays.map((day, index) =>
+      baseEvent({
+        instanceId: `work-${index}`,
+        masterEventId: `work-${index}`,
+        title: "Work",
+        startAt: `${day}T14:00:00.000Z`,
+        endAt: `${day}T22:00:00.000Z`,
+        timezone: tz,
+      }),
+    );
+
+    const start = parseISO("2026-08-09T12:00:00.000Z");
+    const end = parseISO("2026-08-16T12:00:00.000Z");
+    const map = computeRangeAvailability(start, end, events, tz);
+
+    for (const day of workDays) {
+      expect(map.get(day)?.status).toBe("busy");
+    }
+
+    expect(map.get("2026-08-09")?.status).toBe("free");
+    expect(map.get("2026-08-15")?.status).toBe("free");
+  });
 });

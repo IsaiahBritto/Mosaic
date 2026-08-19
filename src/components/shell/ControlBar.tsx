@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { formatDateParam } from "@/lib/calendar/date-params";
+import { formatCalendarDate } from "@/lib/calendar/timezone";
 import { setDayViewMode } from "@/lib/actions/views";
 import { Toggle } from "@/components/ui/Toggle";
 
 type ControlBarProps = {
   selectedDate: Date;
+  displayTimezone: string;
   defaultViewMode?: "timeline" | "agenda";
   variant?: "full" | "minimal";
 };
 
 export function ControlBar({
   selectedDate,
+  displayTimezone,
   defaultViewMode = "timeline",
   variant = "full",
 }: ControlBarProps) {
@@ -22,7 +24,7 @@ export function ControlBar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const dateParam = formatDateParam(selectedDate);
+  const dateParam = formatCalendarDate(selectedDate, displayTimezone);
 
   const viewParam = searchParams.get("view");
   const isAgenda =
