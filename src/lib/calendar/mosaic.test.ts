@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { parseISO } from "date-fns";
 import {
   buildYearMosaicDays,
   getDayMosaicColors,
@@ -29,7 +28,7 @@ const baseEvent = (overrides: Partial<EventInstance> = {}): EventInstance => ({
 
 describe("getDayMosaicColors", () => {
   const tz = "America/New_York";
-  const date = parseISO("2026-06-15T12:00:00.000Z");
+  const date = "2026-06-15";
 
   it("returns empty array when no events", () => {
     expect(getDayMosaicColors(date, [], tz)).toEqual([]);
@@ -94,6 +93,13 @@ describe("buildYearMosaicDays", () => {
     const days = buildYearMosaicDays(2024, [], tz);
     expect(days).toHaveLength(366);
     expect(days[365]?.date).toBe("2024-12-31");
+  });
+
+  it("starts and ends on the calendar year in the display timezone", () => {
+    const days = buildYearMosaicDays(2026, [], "America/Chicago");
+
+    expect(days[0]?.date).toBe("2026-01-01");
+    expect(days.at(-1)?.date).toBe("2026-12-31");
   });
 
   it("includes colors for days with events", () => {

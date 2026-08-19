@@ -1,12 +1,6 @@
+import { parseISO } from "date-fns";
 import {
-  eachDayOfInterval,
-  endOfYear,
-  parseISO,
-  startOfYear,
-} from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import {
-  formatCalendarDate,
+  addCalendarDays,
   getCalendarDayUtcRange,
 } from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
@@ -16,16 +10,11 @@ export type MosaicDay = {
   colors: string[];
 };
 
-function dateKey(date: Date, timezone: string): string {
-  return formatInTimeZone(date, timezone, "yyyy-MM-dd");
-}
-
 function eventsOnDate(
-  date: Date,
+  dateParam: string,
   events: EventInstance[],
   timezone: string,
 ): EventInstance[] {
-  const dateParam = formatCalendarDate(date, timezone);
   const { start: dayStart, end: dayEnd } = getCalendarDayUtcRange(dateParam, timezone);
 
   return events.filter((event) => {
@@ -36,11 +25,11 @@ function eventsOnDate(
 }
 
 export function getDayMosaicColors(
-  date: Date,
+  dateParam: string,
   events: EventInstance[],
   timezone: string,
 ): string[] {
-  const dayEvents = eventsOnDate(date, events, timezone).sort(
+  const dayEvents = eventsOnDate(dateParam, events, timezone).sort(
     (a, b) => parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime(),
   );
 
@@ -63,12 +52,17 @@ export function buildYearMosaicDays(
   events: EventInstance[],
   timezone: string,
 ): MosaicDay[] {
-  const yearStart = startOfYear(new Date(year, 0, 1));
-  const yearEnd = endOfYear(new Date(year, 0, 1));
-  const days = eachDayOfInterval({ start: yearStart, end: yearEnd });
+  const days: MosaicDay[] = [];
+  const yearEnd = `${year}-12-31`;
+  let current = `${year}-01-01`;
 
-  return days.map((date) => ({
-    date: dateKey(date, timezone),
-    colors: getDayMosaicColors(date, events, timezone),
-  }));
+  while (current <= yearEnd) {
+    days.push({
+      date: current,
+      colors: getDayMosaicColors(current, events, timezone),
+    });
+    current = addCalendarDays(current, 1, timezone);
+  }
+
+  return days;
 }

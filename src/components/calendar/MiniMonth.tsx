@@ -6,11 +6,11 @@ import {
   type DayAvailability,
 } from "@/lib/calendar/availability";
 import { statusCellClass } from "@/components/calendar/MonthCell";
-import { formatCalendarDate } from "@/lib/calendar/timezone";
+import { parseCalendarDateParam } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
 type MiniMonthProps = {
-  monthDate: Date;
+  monthDateParam: string;
   selectedDateParam: string;
   availabilityMap: Map<string, DayAvailability>;
   timezone: string;
@@ -19,15 +19,17 @@ type MiniMonthProps = {
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 export function MiniMonth({
-  monthDate,
+  monthDateParam,
   selectedDateParam,
   availabilityMap,
   timezone,
 }: MiniMonthProps) {
-  const dates = getMonthGridDates(monthDate);
-  const monthName = monthDate
-    .toLocaleString("en-US", { month: "long" })
-    .toUpperCase();
+  const dates = getMonthGridDates(monthDateParam, timezone);
+  const monthName = formatInTimeZone(
+    parseCalendarDateParam(monthDateParam, timezone),
+    timezone,
+    "MMMM",
+  ).toUpperCase();
 
   return (
     <div className="rounded-lg bg-surface/40 p-2">
@@ -42,24 +44,23 @@ export function MiniMonth({
         ))}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
-        {dates.map((date) => {
-          const key = formatCalendarDate(date, timezone);
-          const availability = availabilityMap.get(key);
+        {dates.map((dateParam) => {
+          const availability = availabilityMap.get(dateParam);
           const status = availability?.status ?? "free";
-          const isSelected = key === selectedDateParam;
+          const isSelected = dateParam === selectedDateParam;
 
           return (
             <Link
-              key={key}
-              href={`/month?date=${key}`}
+              key={dateParam}
+              href={`/month?date=${dateParam}`}
               className={cn(
                 "flex h-4 items-center justify-center rounded-sm text-[9px]",
                 statusCellClass(status),
-                !isDateInMonth(date, monthDate) && "opacity-30",
+                !isDateInMonth(dateParam, monthDateParam) && "opacity-30",
                 isSelected && "ring-1 ring-text-primary",
               )}
             >
-              {formatInTimeZone(date, timezone, "d")}
+              {Number(dateParam.slice(8))}
             </Link>
           );
         })}

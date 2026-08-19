@@ -1,14 +1,19 @@
 import { redirect } from "next/navigation";
-import { endOfMonth, startOfMonth, endOfDay, startOfDay } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { MonthHeader } from "@/components/calendar/MonthHeader";
 import { StatusLegend } from "@/components/calendar/StatusLegend";
-import { computeRangeAvailability } from "@/lib/calendar/availability";
+import {
+  computeRangeAvailability,
+  getMonthGridDates,
+} from "@/lib/calendar/availability";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
-import { resolveCalendarDateParam } from "@/lib/calendar/timezone";
+import {
+  getCalendarDayUtcRange,
+  resolveCalendarDateParam,
+} from "@/lib/calendar/timezone";
 
 type MonthPageProps = {
   searchParams: Promise<{ date?: string }>;
@@ -35,13 +40,13 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     .maybeSingle();
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
-  const { selectedDate } = resolveCalendarDateParam(params.date, timezone);
-  const monthStart = startOfMonth(selectedDate);
-  const monthEnd = endOfMonth(selectedDate);
-  const gridStart = startOfDay(monthStart);
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
-  const gridEnd = endOfDay(monthEnd);
-  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+  const { dateParam, selectedDate } = resolveCalendarDateParam(
+    params.date,
+    timezone,
+  );
+  const gridDates = getMonthGridDates(dateParam, timezone);
+  const { start: gridStart } = getCalendarDayUtcRange(gridDates[0]!, timezone);
+  const { end: gridEnd } = getCalendarDayUtcRange(gridDates.at(-1)!, timezone);
 
   const events = await getExpandedEventsInRange(gridStart, gridEnd);
   const availabilityMap = computeRangeAvailability(
@@ -55,13 +60,13 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MonthHeader monthDate={selectedDate} />
+      <MonthHeader monthDateParam={dateParam} timezone={timezone} />
 
       {hasVisibleCalendars ? (
         <>
           <MonthGrid
-            monthDate={selectedDate}
-            selectedDate={selectedDate}
+            monthDateParam={dateParam}
+            selectedDateParam={dateParam}
             availabilityMap={availabilityMap}
             timezone={timezone}
           />

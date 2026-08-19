@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { isSameDay } from "date-fns";
 import type { DayAvailability, DayStatus } from "@/lib/calendar/availability";
-import { formatDateParam } from "@/lib/calendar/date-params";
+import { withCalendarDateParam } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
 const DOT_COLORS: Record<DayStatus, string> = {
@@ -27,7 +26,7 @@ export function statusCellClass(status: DayStatus): string {
 }
 
 type MonthCellProps = {
-  date: Date;
+  dateParam: string;
   isCurrentMonth?: boolean;
   isToday?: boolean;
   isSelected?: boolean;
@@ -37,7 +36,7 @@ type MonthCellProps = {
 };
 
 export function MonthCell({
-  date,
+  dateParam,
   isCurrentMonth = true,
   isToday = false,
   isSelected = false,
@@ -46,8 +45,7 @@ export function MonthCell({
   href,
 }: MonthCellProps) {
   const status = availability?.status ?? "free";
-  const dateParam = formatDateParam(date);
-  const linkHref = href ?? `/day?date=${dateParam}`;
+  const linkHref = href ?? withCalendarDateParam("/day", dateParam);
 
   return (
     <Link
@@ -69,7 +67,7 @@ export function MonthCell({
           !isSelected && !isToday && status !== "holiday" && "text-text-primary",
         )}
       >
-        {date.getDate()}
+        {Number(dateParam.slice(8))}
       </span>
 
       {!compact && availability?.dots?.length ? (
@@ -85,37 +83,3 @@ export function MonthCell({
     </Link>
   );
 }
-
-export function MonthCellStatic({
-  date,
-  isToday,
-  isSelected,
-  availability,
-  compact,
-}: Omit<MonthCellProps, "href">) {
-  const status = availability?.status ?? "free";
-
-  return (
-    <div
-      className={cn(
-        "flex flex-col rounded-sm",
-        statusCellClass(status),
-        compact ? "min-h-[1.1rem] p-0.5" : "min-h-[3.5rem] p-1",
-      )}
-    >
-      <span
-        className={cn(
-          "text-center",
-          compact ? "text-[9px]" : "text-sm",
-          isSelected && "rounded-full ring-1 ring-text-primary",
-          isToday && "font-bold text-accent",
-          status === "holiday" && "text-status-holiday",
-        )}
-      >
-        {date.getDate()}
-      </span>
-    </div>
-  );
-}
-
-export { isSameDay };

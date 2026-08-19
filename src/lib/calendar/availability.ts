@@ -1,9 +1,4 @@
-import {
-  differenceInMinutes,
-  format,
-  isSameDay,
-  parseISO,
-} from "date-fns";
+import { differenceInMinutes, parseISO } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import {
   BUSY_EVENT_COUNT,
@@ -14,6 +9,7 @@ import {
 import {
   addCalendarDays,
   formatCalendarDate,
+  getCalendarDayOfWeek,
   getCalendarDayUtcRange,
   parseCalendarDateParam,
 } from "@/lib/calendar/timezone";
@@ -178,29 +174,25 @@ export function computeRangeAvailability(
   return map;
 }
 
-export function getMonthGridDates(monthDate: Date): Date[] {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const firstOfMonth = new Date(year, month, 1);
-  const startOffset = firstOfMonth.getDay();
-  const gridStart = new Date(year, month, 1 - startOffset);
+/** Sun-first 6x7 grid of calendar date params covering the given month. */
+export function getMonthGridDates(
+  monthDateParam: string,
+  timezone: string,
+): string[] {
+  const firstOfMonth = `${monthDateParam.slice(0, 7)}-01`;
+  const startOffset = getCalendarDayOfWeek(firstOfMonth, timezone);
+  const gridStart = addCalendarDays(firstOfMonth, -startOffset, timezone);
 
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + index);
-    return date;
-  });
-}
-
-export function isDateInMonth(date: Date, monthDate: Date): boolean {
-  return (
-    date.getMonth() === monthDate.getMonth() &&
-    date.getFullYear() === monthDate.getFullYear()
+  return Array.from({ length: 42 }, (_, index) =>
+    addCalendarDays(gridStart, index, timezone),
   );
 }
 
-export function formatMonthYear(date: Date): string {
-  return format(date, "MMMM yyyy");
+export function isDateInMonth(
+  dateParam: string,
+  monthDateParam: string,
+): boolean {
+  return dateParam.slice(0, 7) === monthDateParam.slice(0, 7);
 }
 
 export function isSameCalendarDay(
@@ -211,5 +203,3 @@ export function isSameCalendarDay(
   return formatInTimeZone(a, timezone, "yyyy-MM-dd") ===
     formatInTimeZone(b, timezone, "yyyy-MM-dd");
 }
-
-export { isSameDay };

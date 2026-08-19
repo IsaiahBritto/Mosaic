@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
-import { endOfYear, startOfYear } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
-import { parseDateParam, withDateParam } from "@/lib/calendar/date-params";
 import { buildYearMosaicDays } from "@/lib/calendar/mosaic";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
+import {
+  getCalendarDayUtcRange,
+  resolveCalendarDateParam,
+  withCalendarDateParam,
+} from "@/lib/calendar/timezone";
 import { MosaicGrid } from "@/components/calendar/MosaicGrid";
 import { AppHeader } from "@/components/shell/AppHeader";
 
@@ -13,8 +16,6 @@ type MosaicPageProps = {
 
 export default async function MosaicPage({ searchParams }: MosaicPageProps) {
   const params = await searchParams;
-  const selectedDate = parseDateParam(params.date);
-  const year = selectedDate.getFullYear();
 
   const supabase = await createClient();
   const {
@@ -32,8 +33,10 @@ export default async function MosaicPage({ searchParams }: MosaicPageProps) {
     .maybeSingle();
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
-  const yearStart = startOfYear(new Date(year, 0, 1));
-  const yearEnd = endOfYear(new Date(year, 0, 1));
+  const { dateParam } = resolveCalendarDateParam(params.date, timezone);
+  const year = Number(dateParam.slice(0, 4));
+  const { start: yearStart } = getCalendarDayUtcRange(`${year}-01-01`, timezone);
+  const { end: yearEnd } = getCalendarDayUtcRange(`${year}-12-31`, timezone);
 
   const events = await getExpandedEventsInRange(yearStart, yearEnd);
   const days = buildYearMosaicDays(year, events, timezone);
@@ -42,7 +45,7 @@ export default async function MosaicPage({ searchParams }: MosaicPageProps) {
     <div className="flex h-dvh flex-col">
       <AppHeader
         title="My Mosaic"
-        exitHref={withDateParam("/month", selectedDate)}
+        exitHref={withCalendarDateParam("/month", dateParam)}
         hideAction
       />
       <MosaicGrid days={days} />

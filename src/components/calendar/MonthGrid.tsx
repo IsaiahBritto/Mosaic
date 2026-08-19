@@ -1,29 +1,32 @@
-import { isSameDay } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
 import {
   getMonthGridDates,
   isDateInMonth,
   type DayAvailability,
 } from "@/lib/calendar/availability";
 import { DAY_LABELS } from "@/lib/calendar/date-params";
+import {
+  getCalendarDayOfWeek,
+  getTodayCalendarDate,
+} from "@/lib/calendar/timezone";
 import { MonthCell } from "@/components/calendar/MonthCell";
 import { cn } from "@/lib/utils/cn";
 
 type MonthGridProps = {
-  monthDate: Date;
-  selectedDate: Date;
+  monthDateParam: string;
+  selectedDateParam: string;
   availabilityMap: Map<string, DayAvailability>;
   timezone: string;
 };
 
 export function MonthGrid({
-  monthDate,
-  selectedDate,
+  monthDateParam,
+  selectedDateParam,
   availabilityMap,
   timezone,
 }: MonthGridProps) {
-  const dates = getMonthGridDates(monthDate);
-  const today = new Date();
+  const dates = getMonthGridDates(monthDateParam, timezone);
+  const todayParam = getTodayCalendarDate(timezone);
+  const selectedDayOfWeek = getCalendarDayOfWeek(selectedDateParam, timezone);
 
   return (
     <div className="px-2">
@@ -33,7 +36,7 @@ export function MonthGrid({
             key={`${label}-${index}`}
             className={cn(
               "text-[10px] uppercase text-text-secondary",
-              selectedDate.getDay() === index && "font-bold text-accent",
+              selectedDayOfWeek === index && "font-bold text-accent",
             )}
           >
             {label}
@@ -42,19 +45,16 @@ export function MonthGrid({
       </div>
 
       <div className="grid grid-cols-7 gap-1">
-        {dates.map((date) => {
-          const key = formatInTimeZone(date, timezone, "yyyy-MM-dd");
-          return (
-            <MonthCell
-              key={key}
-              date={date}
-              isCurrentMonth={isDateInMonth(date, monthDate)}
-              isToday={isSameDay(date, today)}
-              isSelected={isSameDay(date, selectedDate)}
-              availability={availabilityMap.get(key)}
-            />
-          );
-        })}
+        {dates.map((dateParam) => (
+          <MonthCell
+            key={dateParam}
+            dateParam={dateParam}
+            isCurrentMonth={isDateInMonth(dateParam, monthDateParam)}
+            isToday={dateParam === todayParam}
+            isSelected={dateParam === selectedDateParam}
+            availability={availabilityMap.get(dateParam)}
+          />
+        ))}
       </div>
     </div>
   );
