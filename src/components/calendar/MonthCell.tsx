@@ -55,16 +55,17 @@ export function MonthCell({
         statusCellClass(status),
         compact ? "min-h-[2rem] p-0.5" : "min-h-[3.5rem] p-1",
         !isCurrentMonth && "opacity-40",
+        isSelected && isToday && "ring-2 ring-accent",
+        isSelected && !isToday && "ring-2 ring-white",
       )}
     >
       <span
         className={cn(
           "text-center",
-          compact ? "text-[10px]" : isToday || isSelected ? "text-2xl font-extrabold" : "text-sm",
+          compact ? "text-[10px]" : isToday ? "text-2xl font-extrabold" : "text-sm",
           isToday && "text-accent",
-          !isToday && isSelected && "font-bold text-text-primary",
-          !isToday && !isSelected && status === "holiday" && "text-status-holiday",
-          !isToday && !isSelected && status !== "holiday" && "text-text-primary",
+          !isToday && status === "holiday" && "text-status-holiday",
+          !isToday && status !== "holiday" && "text-text-primary",
         )}
       >
         {Number(dateParam.slice(8))}

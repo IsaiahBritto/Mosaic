@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils/cn";
 
 type MiniMonthProps = {
   monthDateParam: string;
-  selectedDateParam: string;
+  todayDateParam: string;
   availabilityMap: Map<string, DayAvailability>;
   timezone: string;
 };
@@ -20,7 +20,7 @@ const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 export function MiniMonth({
   monthDateParam,
-  selectedDateParam,
+  todayDateParam,
   availabilityMap,
   timezone,
 }: MiniMonthProps) {
@@ -32,7 +32,10 @@ export function MiniMonth({
   ).toUpperCase();
 
   return (
-    <div className="rounded-lg bg-surface/40 p-2">
+    <Link
+      href={`/month?date=${monthDateParam}&select=none`}
+      className="block rounded-lg bg-surface/40 p-2 transition-opacity hover:opacity-90"
+    >
       <h3 className="mb-2 text-center text-[10px] font-bold tracking-widest text-text-secondary">
         {monthName}
       </h3>
@@ -47,24 +50,23 @@ export function MiniMonth({
         {dates.map((dateParam) => {
           const availability = availabilityMap.get(dateParam);
           const status = availability?.status ?? "free";
-          const isSelected = dateParam === selectedDateParam;
+          const isToday = dateParam === todayDateParam;
 
           return (
-            <Link
+            <span
               key={dateParam}
-              href={`/month?date=${dateParam}`}
               className={cn(
                 "flex h-4 items-center justify-center rounded-sm text-[9px]",
                 statusCellClass(status),
                 !isDateInMonth(dateParam, monthDateParam) && "opacity-30",
-                isSelected && "ring-1 ring-text-primary",
+                isToday && "ring-1 ring-accent text-accent",
               )}
             >
               {Number(dateParam.slice(8))}
-            </Link>
+            </span>
           );
         })}
       </div>
-    </div>
+    </Link>
   );
 }

@@ -15,7 +15,7 @@ import {
 } from "@/lib/calendar/timezone";
 
 type MonthPageProps = {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; select?: string }>;
 };
 
 export default async function MonthPage({ searchParams }: MonthPageProps) {
@@ -56,6 +56,8 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
   );
 
   const hasVisibleCalendars = visibleIds.length > 0;
+  const selectedDateParam =
+    params.select === "none" ? undefined : dateParam;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -63,7 +65,7 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
         <>
           <MonthGrid
             monthDateParam={dateParam}
-            selectedDateParam={dateParam}
+            selectedDateParam={selectedDateParam}
             availabilityMap={availabilityMap}
             timezone={timezone}
           />

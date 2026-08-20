@@ -9,7 +9,7 @@ import { MonthCell } from "@/components/calendar/MonthCell";
 
 type MonthGridProps = {
   monthDateParam: string;
-  selectedDateParam: string;
+  selectedDateParam?: string;
   availabilityMap: Map<string, DayAvailability>;
   timezone: string;
 };
@@ -43,7 +43,9 @@ export function MonthGrid({
             dateParam={dateParam}
             isCurrentMonth={isDateInMonth(dateParam, monthDateParam)}
             isToday={dateParam === todayParam}
-            isSelected={dateParam === selectedDateParam}
+            isSelected={
+              selectedDateParam !== undefined && dateParam === selectedDateParam
+            }
             availability={availabilityMap.get(dateParam)}
           />
         ))}

@@ -51,39 +51,42 @@ export function WeekStrip({
           <Link
             key={weekDateParam}
             href={`/day?date=${weekDateParam}`}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-md py-1",
-              dayAvailability?.status === "free" && "bg-status-free/10",
-              dayAvailability?.status === "busy" && "bg-status-busy/10",
-              dayAvailability?.status === "partial" &&
-                "bg-gradient-to-b from-status-busy/15 to-status-free/10",
-              dayAvailability?.status === "holiday" && "bg-status-holiday/10",
-            )}
+            className="flex flex-col items-center gap-1"
           >
             <span className="text-[10px] uppercase text-text-secondary">
               {DAY_LABELS[index]}
             </span>
-            <span className="flex h-10 w-full items-center justify-center">
+            <span
+              className={cn(
+                "flex w-full min-h-[3.5rem] flex-col rounded-md p-1",
+                dayAvailability?.status === "free" && "bg-status-free/10",
+                dayAvailability?.status === "busy" && "bg-status-busy/10",
+                dayAvailability?.status === "partial" &&
+                  "bg-gradient-to-b from-status-busy/15 to-status-free/10",
+                dayAvailability?.status === "holiday" && "bg-status-holiday/10",
+                isSelected && isToday && "ring-2 ring-accent",
+                isSelected && !isToday && "ring-2 ring-white",
+              )}
+            >
               <span
                 className={cn(
-                  (isSelected || isToday) && "text-2xl font-extrabold",
-                  !isSelected && !isToday && "text-sm",
-                  isToday && "text-accent",
-                  !isToday && isSelected && "text-text-primary",
-                  !isToday && !isSelected && "text-text-secondary",
+                  "flex flex-1 items-center justify-center",
+                  isToday && "text-2xl font-extrabold text-accent",
+                  !isToday && isSelected && "text-sm text-text-primary",
+                  !isToday && !isSelected && "text-sm text-text-secondary",
                 )}
               >
                 {formatInTimeZone(date, displayTimezone, "d")}
               </span>
+              <div className="mt-auto flex h-1.5 justify-center gap-0.5">
+                {(dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (
+                  <span
+                    key={`${weekDateParam}-${dotIndex}`}
+                    className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
+                  />
+                ))}
+              </div>
             </span>
-            <div className="flex h-1.5 justify-center gap-0.5">
-              {(dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (
-                <span
-                  key={`${weekDateParam}-${dotIndex}`}
-                  className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
-                />
-              ))}
-            </div>
           </Link>
         );
       })}

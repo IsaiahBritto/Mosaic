@@ -4,6 +4,7 @@ import { computeRangeAvailability } from "@/lib/calendar/availability";
 import { getExpandedEventsInRange } from "@/lib/queries/events";
 import {
   getCalendarDayUtcRange,
+  getTodayCalendarDate,
   resolveCalendarDateParam,
 } from "@/lib/calendar/timezone";
 import { YearGrid } from "@/components/calendar/YearGrid";
@@ -32,6 +33,7 @@ export default async function YearPage({ searchParams }: YearPageProps) {
 
   const timezone = prefs?.default_timezone ?? "America/New_York";
   const { dateParam } = resolveCalendarDateParam(params.date, timezone);
+  const todayDateParam = getTodayCalendarDate(timezone);
   const year = Number(dateParam.slice(0, 4));
   const { start: yearStart } = getCalendarDayUtcRange(`${year}-01-01`, timezone);
   const { end: yearEnd } = getCalendarDayUtcRange(`${year}-12-31`, timezone);
@@ -48,7 +50,7 @@ export default async function YearPage({ searchParams }: YearPageProps) {
     <div className="flex flex-1 flex-col overflow-y-auto pt-2">
       <YearGrid
         year={year}
-        selectedDateParam={dateParam}
+        todayDateParam={todayDateParam}
         availabilityMap={availabilityMap}
         timezone={timezone}
       />

@@ -3,14 +3,14 @@ import { MiniMonth } from "@/components/calendar/MiniMonth";
 
 type YearGridProps = {
   year: number;
-  selectedDateParam: string;
+  todayDateParam: string;
   availabilityMap: Map<string, DayAvailability>;
   timezone: string;
 };
 
 export function YearGrid({
   year,
-  selectedDateParam,
+  todayDateParam,
   availabilityMap,
   timezone,
 }: YearGridProps) {
@@ -25,7 +25,7 @@ export function YearGrid({
         <MiniMonth
           key={monthDateParam}
           monthDateParam={monthDateParam}
-          selectedDateParam={selectedDateParam}
+          todayDateParam={todayDateParam}
           availabilityMap={availabilityMap}
           timezone={timezone}
         />
