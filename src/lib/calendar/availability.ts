@@ -19,11 +19,37 @@ export type DayStatus = "free" | "busy" | "partial" | "holiday";
 
 export type AvailabilityDot = DayStatus;
 
+export type CalendarAvailabilityDot = {
+  calendarId: string;
+  colorHex: string;
+  calendarName: string;
+};
+
 export type DayAvailability = {
   date: string;
   status: DayStatus;
   dots: AvailabilityDot[];
+  calendarDots: CalendarAvailabilityDot[];
 };
+
+export function neutralCellClass(): string {
+  return "bg-surface/40";
+}
+
+export function statusCellClass(status: DayStatus): string {
+  switch (status) {
+    case "free":
+      return "bg-status-free/20";
+    case "busy":
+      return "bg-status-busy/25";
+    case "partial":
+      return "bg-gradient-to-b from-status-busy/30 to-status-free/20";
+    case "holiday":
+      return "bg-status-holiday/15";
+    default:
+      return neutralCellClass();
+  }
+}
 
 function dateKey(date: Date, timezone: string): string {
   return formatInTimeZone(date, timezone, "yyyy-MM-dd");
@@ -133,6 +159,42 @@ function buildDots(dayEvents: EventInstance[], status: DayStatus): AvailabilityD
   return dots.slice(0, 3);
 }
 
+export function buildCalendarDots(
+  dayEvents: EventInstance[],
+  maxDots = 5,
+): CalendarAvailabilityDot[] {
+  if (dayEvents.length === 0) {
+    return [];
+  }
+
+  const byCalendar = new Map<
+    string,
+    { colorHex: string; calendarName: string; count: number }
+  >();
+
+  for (const event of dayEvents) {
+    const existing = byCalendar.get(event.calendarId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      byCalendar.set(event.calendarId, {
+        colorHex: event.calendarColor,
+        calendarName: event.calendarName,
+        count: 1,
+      });
+    }
+  }
+
+  return [...byCalendar.entries()]
+    .sort(([, a], [, b]) => b.count - a.count)
+    .slice(0, maxDots)
+    .map(([calendarId, { colorHex, calendarName }]) => ({
+      calendarId,
+      colorHex,
+      calendarName,
+    }));
+}
+
 export function computeDayAvailability(
   date: Date,
   events: EventInstance[],
@@ -148,6 +210,7 @@ export function computeDayAvailability(
     date: dateKey(date, timezone),
     status,
     dots: buildDots(dayEvents, status),
+    calendarDots: buildCalendarDots(dayEvents),
   };
 }
 

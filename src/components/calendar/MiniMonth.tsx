@@ -3,9 +3,9 @@ import { formatInTimeZone } from "date-fns-tz";
 import {
   getMonthGridDates,
   isDateInMonth,
+  statusCellClass,
   type DayAvailability,
 } from "@/lib/calendar/availability";
-import { statusCellClass } from "@/components/calendar/MonthCell";
 import { parseCalendarDateParam } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 

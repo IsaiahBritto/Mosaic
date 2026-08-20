@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { AvailabilityDisplayProvider } from "@/components/calendar/AvailabilityDisplayContext";
 import { ViewNav } from "@/components/shell/ViewNav";
 import { PeriodNav } from "@/components/shell/PeriodNav";
 import { WeekStrip } from "@/components/shell/WeekStrip";
@@ -10,6 +11,7 @@ import { CollapsibleControlBar } from "@/components/shell/CollapsibleControlBar"
 import { TimezoneSync } from "@/components/shell/TimezoneSync";
 import { resolveCalendarDateParam } from "@/lib/calendar/timezone";
 import { useScrollCollapse } from "@/hooks/useScrollCollapse";
+import type { AvailabilityDisplayMode } from "@/lib/actions/views";
 
 function isFullScreenRoute(pathname: string): boolean {
   return (
@@ -117,16 +119,20 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
 type AppLayoutClientProps = {
   children: React.ReactNode;
   displayTimezone: string;
+  availabilityDisplayMode: AvailabilityDisplayMode;
 };
 
 export function AppLayoutClient({
   children,
   displayTimezone,
+  availabilityDisplayMode,
 }: AppLayoutClientProps) {
   return (
     <Suspense fallback={<div className="mx-auto min-h-full max-w-md bg-background" />}>
       <TimezoneSync />
-      <AppLayoutInner displayTimezone={displayTimezone}>{children}</AppLayoutInner>
+      <AvailabilityDisplayProvider initialMode={availabilityDisplayMode}>
+        <AppLayoutInner displayTimezone={displayTimezone}>{children}</AppLayoutInner>
+      </AvailabilityDisplayProvider>
     </Suspense>
   );
 }

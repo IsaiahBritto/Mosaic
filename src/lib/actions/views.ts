@@ -105,6 +105,61 @@ export async function getDayViewModeFromPrefs(): Promise<"timeline" | "agenda"> 
   return data?.day_view_mode === "agenda" ? "agenda" : "timeline";
 }
 
+export type AvailabilityDisplayMode = "general" | "specific";
+
+export async function getAvailabilityDisplayModeFromPrefs(): Promise<AvailabilityDisplayMode> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return "general";
+  }
+
+  const { data } = await supabase
+    .from("user_preferences")
+    .select("availability_display_mode")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return data?.availability_display_mode === "specific" ? "specific" : "general";
+}
+
+export async function setAvailabilityDisplayMode(
+  mode: AvailabilityDisplayMode,
+): Promise<ActionResult<null>> {
+  if (mode !== "general" && mode !== "specific") {
+    return actionError("VALIDATION_ERROR", "Invalid display mode");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({
+      availability_display_mode: mode,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  if (error) {
+    return actionError("UNKNOWN", error.message);
+  }
+
+  revalidatePath("/day");
+  revalidatePath("/month");
+  revalidatePath("/year");
+  return actionSuccess(null);
+}
+
 export async function syncDefaultTimezone(
   timezone: string,
 ): Promise<ActionResult<null>> {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PX_PER_HOUR, TIMELINE_DAY_START_HOUR } from "@/lib/calendar/constants";
+import { PX_PER_HOUR, TIMELINE_DAY_START_HOUR, TIMELINE_EDGE_PADDING_PX } from "@/lib/calendar/constants";
 import {
   applyMinutesDeltaToEvent,
   eventToPosition,
+  getTimelineHours,
   minutesFromTimelineStart,
   pxToSnappedMinutes,
   snappedMinutesToPx,
@@ -62,6 +63,7 @@ describe("eventToPosition", () => {
 
     const position = eventToPosition(chicagoEvent, "America/Chicago");
     const expectedTop =
+      TIMELINE_EDGE_PADDING_PX +
       ((8 - TIMELINE_DAY_START_HOUR) * 60) / 60 * PX_PER_HOUR -
       chicagoEvent.travelBeforeMinutes / 60 * PX_PER_HOUR;
 
@@ -78,10 +80,20 @@ describe("eventToPosition", () => {
 
     const position = eventToPosition(chicagoEvent, "America/New_York");
     const expectedTop =
+      TIMELINE_EDGE_PADDING_PX +
       ((9 - TIMELINE_DAY_START_HOUR) * 60) / 60 * PX_PER_HOUR -
       chicagoEvent.travelBeforeMinutes / 60 * PX_PER_HOUR;
 
     expect(position.top).toBe(expectedTop);
+  });
+});
+
+describe("getTimelineHours", () => {
+  it("returns all 24 hours from midnight through 11 PM", () => {
+    expect(getTimelineHours()).toEqual([
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+      20, 21, 22, 23,
+    ]);
   });
 });
 
@@ -97,14 +109,14 @@ describe("minutesFromTimelineStart", () => {
 
 describe("snap helpers", () => {
   it("rounds y position to nearest 15 minutes from timeline start", () => {
-    expect(pxToSnappedMinutes(0)).toBe(0);
-    expect(pxToSnappedMinutes(PX_PER_HOUR / 4)).toBe(15);
-    expect(pxToSnappedMinutes(PX_PER_HOUR / 2)).toBe(30);
+    expect(pxToSnappedMinutes(TIMELINE_EDGE_PADDING_PX)).toBe(0);
+    expect(pxToSnappedMinutes(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR / 4)).toBe(15);
+    expect(pxToSnappedMinutes(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR / 2)).toBe(30);
   });
 
   it("converts snapped minutes back to pixels", () => {
-    expect(snappedMinutesToPx(60)).toBe(PX_PER_HOUR);
-    expect(snappedMinutesToPx(15)).toBe(PX_PER_HOUR / 4);
+    expect(snappedMinutesToPx(60)).toBe(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR);
+    expect(snappedMinutesToPx(15)).toBe(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR / 4);
   });
 });
 

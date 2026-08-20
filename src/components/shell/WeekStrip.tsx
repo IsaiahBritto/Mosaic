@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import { getWeekAvailability } from "@/lib/actions/views";
-import type { DayAvailability } from "@/lib/calendar/availability";
+import {
+  neutralCellClass,
+  type DayAvailability,
+  type DayStatus,
+} from "@/lib/calendar/availability";
+import { useAvailabilityDisplayMode } from "@/components/calendar/AvailabilityDisplayContext";
 import { DAY_LABELS } from "@/lib/calendar/date-params";
 import {
   formatCalendarDate,
@@ -13,12 +18,12 @@ import {
 } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
-const DOT_COLORS = {
+const DOT_COLORS: Record<DayStatus, string> = {
   free: "bg-status-free",
   busy: "bg-status-busy",
   partial: "bg-status-busy",
   holiday: "bg-status-holiday",
-} as const;
+};
 
 type WeekStripProps = {
   dateParam: string;
@@ -31,6 +36,8 @@ export function WeekStrip({
   selectedDate,
   displayTimezone,
 }: WeekStripProps) {
+  const mode = useAvailabilityDisplayMode();
+  const isSpecific = mode === "specific";
   const weekDateParams = getWeekCalendarDateParams(dateParam, displayTimezone);
   const [availability, setAvailability] = useState<Record<string, DayAvailability>>({});
 
@@ -59,11 +66,16 @@ export function WeekStrip({
             <span
               className={cn(
                 "flex w-full min-h-[3.5rem] flex-col rounded-md p-1",
-                dayAvailability?.status === "free" && "bg-status-free/10",
-                dayAvailability?.status === "busy" && "bg-status-busy/10",
-                dayAvailability?.status === "partial" &&
+                isSpecific
+                  ? neutralCellClass()
+                  : dayAvailability?.status === "free" && "bg-status-free/10",
+                !isSpecific && dayAvailability?.status === "busy" && "bg-status-busy/10",
+                !isSpecific &&
+                  dayAvailability?.status === "partial" &&
                   "bg-gradient-to-b from-status-busy/15 to-status-free/10",
-                dayAvailability?.status === "holiday" && "bg-status-holiday/10",
+                !isSpecific &&
+                  dayAvailability?.status === "holiday" &&
+                  "bg-status-holiday/10",
                 isSelected && isToday && "ring-2 ring-accent",
                 isSelected && !isToday && "ring-2 ring-white",
               )}
@@ -79,12 +91,20 @@ export function WeekStrip({
                 {formatInTimeZone(date, displayTimezone, "d")}
               </span>
               <div className="mt-auto flex h-1.5 justify-center gap-0.5">
-                {(dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (
-                  <span
-                    key={`${weekDateParam}-${dotIndex}`}
-                    className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
-                  />
-                ))}
+                {isSpecific
+                  ? (dayAvailability?.calendarDots ?? []).slice(0, 5).map((dot) => (
+                      <span
+                        key={`${weekDateParam}-${dot.calendarId}`}
+                        className="h-1 w-1 rounded-full"
+                        style={{ backgroundColor: dot.colorHex }}
+                      />
+                    ))
+                  : (dayAvailability?.dots ?? []).slice(0, 3).map((dot, dotIndex) => (
+                      <span
+                        key={`${weekDateParam}-${dotIndex}`}
+                        className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
+                      />
+                    ))}
               </div>
             </span>
           </Link>

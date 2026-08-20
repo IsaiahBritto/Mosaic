@@ -18,14 +18,14 @@ export function Toggle({ checked, onChange, label, className }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-7 w-12 rounded-full transition-colors",
-          checked ? "bg-status-busy" : "bg-surface ring-1 ring-text-secondary/30",
+          "flex h-7 w-12 shrink-0 items-center rounded-full border-0 p-0.5 transition-colors",
+          checked ? "bg-accent" : "bg-surface ring-1 ring-text-secondary/30",
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 h-6 w-6 rounded-full bg-text-primary transition-transform",
-            checked ? "translate-x-5" : "translate-x-0.5",
+            "block h-6 w-6 shrink-0 rounded-full bg-text-primary shadow-sm transition-[margin-left] duration-200 ease-out",
+            checked ? "ml-auto" : "ml-0",
           )}
         />
       </button>

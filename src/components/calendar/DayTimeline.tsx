@@ -1,15 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatCalendarDate } from "@/lib/calendar/timezone";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  formatCalendarDate,
+  getTodayCalendarDate,
+} from "@/lib/calendar/timezone";
 import {
   TIMELINE_DAY_START_HOUR,
+  TIMELINE_EDGE_PADDING_PX,
   TIMELINE_HEIGHT_PX,
   PX_PER_HOUR,
 } from "@/lib/calendar/constants";
 import {
   getTimelineHours,
+  hourIndexToPx,
   pxToSnappedMinutes,
   toEventDisplayData,
 } from "@/lib/calendar/timeline";
@@ -17,6 +23,8 @@ import type { EventInstance } from "@/types/event";
 import { DraggableEventBlock } from "@/components/events/DraggableEventBlock";
 import { EventCard } from "@/components/events/EventCard";
 import { TimeRail } from "@/components/calendar/TimeRail";
+
+const DEFAULT_SCROLL_HOUR = 6;
 
 type DayTimelineProps = {
   date: Date;
@@ -36,6 +44,25 @@ export function DayTimeline({
   const [dragActive, setDragActive] = useState(false);
   const dateParam = formatCalendarDate(date, displayTimezone);
   const hours = getTimelineHours();
+
+  useEffect(() => {
+    const main = timelineRef.current?.closest("main");
+    if (!main) {
+      return;
+    }
+
+    const isToday = dateParam === getTodayCalendarDate(displayTimezone);
+    const scrollTargetHour = isToday
+      ? Number(formatInTimeZone(new Date(), displayTimezone, "H"))
+      : DEFAULT_SCROLL_HOUR;
+
+    main.scrollTop = Math.max(
+      0,
+      TIMELINE_EDGE_PADDING_PX +
+        (scrollTargetHour - TIMELINE_DAY_START_HOUR) * PX_PER_HOUR -
+        PX_PER_HOUR,
+    );
+  }, [dateParam, displayTimezone]);
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {
     if (dragActive) {
@@ -86,14 +113,19 @@ export function DayTimeline({
             <div key={hour}>
               <div
                 className="absolute inset-x-0 border-t border-surface"
-                style={{ top: index * PX_PER_HOUR }}
+                style={{ top: hourIndexToPx(index) }}
               />
               <div
                 className="absolute inset-x-0 border-t border-dashed border-surface/50"
-                style={{ top: index * PX_PER_HOUR + PX_PER_HOUR / 2 }}
+                style={{ top: hourIndexToPx(index) + PX_PER_HOUR / 2 }}
               />
             </div>
           ))}
+
+          <div
+            className="absolute inset-x-0 border-t border-surface"
+            style={{ top: hourIndexToPx(hours.length) }}
+          />
 
           {timedEvents.map((event) => (
             <div

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseISO } from "date-fns";
 import {
+  buildCalendarDots,
   computeDayAvailability,
   computeRangeAvailability,
   getMonthGridDates,
@@ -99,6 +100,56 @@ describe("computeDayAvailability", () => {
   it("returns partial for short timed event", () => {
     const result = computeDayAvailability(date, [baseEvent()], tz);
     expect(["partial", "busy"]).toContain(result.status);
+  });
+
+  it("includes calendarDots for events", () => {
+    const result = computeDayAvailability(date, [baseEvent()], tz);
+    expect(result.calendarDots).toEqual([
+      {
+        calendarId: "cal-1",
+        colorHex: "#9379E0",
+        calendarName: "Personal",
+      },
+    ]);
+  });
+
+  it("returns empty calendarDots when no events", () => {
+    const result = computeDayAvailability(date, [], tz);
+    expect(result.calendarDots).toEqual([]);
+  });
+});
+
+describe("buildCalendarDots", () => {
+  it("returns one dot per calendar up to two calendars", () => {
+    const events = [
+      baseEvent({ calendarId: "cal-1", calendarColor: "#9379E0", calendarName: "Personal" }),
+      baseEvent({
+        instanceId: "evt-2",
+        calendarId: "cal-2",
+        calendarColor: "#FA7C69",
+        calendarName: "Work",
+      }),
+    ];
+
+    expect(buildCalendarDots(events)).toEqual([
+      { calendarId: "cal-1", colorHex: "#9379E0", calendarName: "Personal" },
+      { calendarId: "cal-2", colorHex: "#FA7C69", calendarName: "Work" },
+    ]);
+  });
+
+  it("returns at most five unique calendar colors when six calendars have events", () => {
+    const events = Array.from({ length: 6 }, (_, index) =>
+      baseEvent({
+        instanceId: `evt-${index}`,
+        calendarId: `cal-${index}`,
+        calendarColor: `#${String(index).repeat(6).slice(0, 6)}`,
+        calendarName: `Calendar ${index}`,
+      }),
+    );
+
+    const dots = buildCalendarDots(events);
+    expect(dots).toHaveLength(5);
+    expect(new Set(dots.map((dot) => dot.calendarId)).size).toBe(5);
   });
 });
 

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
-import { StatusLegend } from "@/components/calendar/StatusLegend";
+import { AvailabilityDisplayPanel } from "@/components/calendar/AvailabilityDisplayPanel";
 import {
   computeRangeAvailability,
   getMonthGridDates,
@@ -30,7 +30,14 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     redirect("/login");
   }
 
-  const { groups, visibleIds } = await getCalendarsPageData(supabase, user.id);
+  const { groups, visibleIds, calendars } = await getCalendarsPageData(supabase, user.id);
+  const visibleCalendars = calendars
+    .filter((calendar) => visibleIds.includes(calendar.id))
+    .map((calendar) => ({
+      id: calendar.id,
+      name: calendar.name,
+      colorHex: calendar.colorHex,
+    }));
 
   const { data: prefs } = await supabase
     .from("user_preferences")
@@ -69,7 +76,7 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
             availabilityMap={availabilityMap}
             timezone={timezone}
           />
-          <StatusLegend />
+          <AvailabilityDisplayPanel calendars={visibleCalendars} />
         </>
       ) : null}
 

@@ -5,6 +5,7 @@ import {
   PX_PER_HOUR,
   TIMELINE_DAY_END_HOUR,
   TIMELINE_DAY_START_HOUR,
+  TIMELINE_EDGE_PADDING_PX,
   TIMELINE_TOTAL_HOURS,
 } from "@/lib/calendar/constants";
 import { formatEventTime } from "@/lib/calendar/timezone";
@@ -61,14 +62,18 @@ export function clampTimelineMinutes(minutes: number): number {
 }
 
 export function pxToSnappedMinutes(yPx: number): number {
-  const raw = (yPx / PX_PER_HOUR) * 60;
+  const raw = ((yPx - TIMELINE_EDGE_PADDING_PX) / PX_PER_HOUR) * 60;
   return clampTimelineMinutes(
     Math.round(raw / SNAP_INTERVAL_MINUTES) * SNAP_INTERVAL_MINUTES,
   );
 }
 
 export function snappedMinutesToPx(minutes: number): number {
-  return (minutes / 60) * PX_PER_HOUR;
+  return TIMELINE_EDGE_PADDING_PX + (minutes / 60) * PX_PER_HOUR;
+}
+
+export function hourIndexToPx(index: number): number {
+  return TIMELINE_EDGE_PADDING_PX + index * PX_PER_HOUR;
 }
 
 export function timelineMinutesToIso(
@@ -148,7 +153,10 @@ export function eventToPosition(
 
   const travelBeforeHeight = (event.travelBeforeMinutes / 60) * PX_PER_HOUR;
   const travelAfterHeight = (event.travelAfterMinutes / 60) * PX_PER_HOUR;
-  const top = (startMinutes / 60) * PX_PER_HOUR - travelBeforeHeight;
+  const top =
+    TIMELINE_EDGE_PADDING_PX +
+    (startMinutes / 60) * PX_PER_HOUR -
+    travelBeforeHeight;
   const height = Math.max(
     MIN_EVENT_HEIGHT_PX,
     ((endMinutes - startMinutes) / 60) * PX_PER_HOUR +
@@ -206,7 +214,10 @@ export function positionFromMinutes(
 > {
   const travelBeforeHeight = (travelBeforeMinutes / 60) * PX_PER_HOUR;
   const travelAfterHeight = (travelAfterMinutes / 60) * PX_PER_HOUR;
-  const top = (startMinutes / 60) * PX_PER_HOUR - travelBeforeHeight;
+  const top =
+    TIMELINE_EDGE_PADDING_PX +
+    (startMinutes / 60) * PX_PER_HOUR -
+    travelBeforeHeight;
   const height = Math.max(
     MIN_EVENT_HEIGHT_PX,
     ((endMinutes - startMinutes) / 60) * PX_PER_HOUR +
