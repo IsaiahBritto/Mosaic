@@ -85,7 +85,7 @@ export function PeriodNav({ dateParam, displayTimezone, mode }: PeriodNavProps) 
               "text-accent transition-colors hover:bg-accent/10",
             )}
           >
-            Today
+            Go To Today
           </Link>
         ) : null}
       </div>
