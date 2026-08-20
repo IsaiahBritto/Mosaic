@@ -77,6 +77,11 @@ describe("getDayMosaicColors", () => {
 
     expect(getDayMosaicColors(date, events, tz)).toEqual(["#9379E0"]);
   });
+
+  it("returns empty colors for future dates", () => {
+    const events = [baseEvent({ startAt: "2027-01-01T13:00:00.000Z" })];
+    expect(getDayMosaicColors("2027-06-15", events, tz)).toEqual([]);
+  });
 });
 
 describe("buildYearMosaicDays", () => {

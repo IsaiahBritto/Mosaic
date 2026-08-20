@@ -28,7 +28,7 @@ import {
 function revalidateSharingViews() {
   revalidatePath("/calendars");
   revalidatePath("/month");
-  revalidatePath("/day");
+  revalidatePath("/week");
   revalidatePath("/year");
 }
 

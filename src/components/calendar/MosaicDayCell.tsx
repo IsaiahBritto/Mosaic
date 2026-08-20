@@ -16,7 +16,7 @@ export function MosaicDayCell({ day }: MosaicDayCellProps) {
   if (day.colors.length === 0) {
     return (
       <div
-        className="aspect-square bg-surface"
+        className="aspect-square bg-mosaic-empty"
         title={label}
         aria-label={label}
       />

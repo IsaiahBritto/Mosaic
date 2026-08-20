@@ -32,7 +32,7 @@ const baseEvent: EventInstance = {
 
 describe("eventToPosition", () => {
   it("returns positive top and height for timed events", () => {
-    const position = eventToPosition(baseEvent, "America/New_York");
+    const position = eventToPosition(baseEvent, "America/New_York", "2026-06-15");
     expect(position.top).toBeGreaterThanOrEqual(0);
     expect(position.height).toBeGreaterThan(0);
     expect(position.startLabel).toBeTruthy();
@@ -40,7 +40,7 @@ describe("eventToPosition", () => {
   });
 
   it("includes travel padding in height", () => {
-    const position = eventToPosition(baseEvent, "America/New_York");
+    const position = eventToPosition(baseEvent, "America/New_York", "2026-06-15");
     expect(position.travelBeforeHeight).toBeGreaterThan(0);
     expect(position.travelAfterHeight).toBeGreaterThan(0);
   });
@@ -49,6 +49,7 @@ describe("eventToPosition", () => {
     const position = eventToPosition(
       { ...baseEvent, isAllDay: true },
       "America/New_York",
+      "2026-06-15",
     );
     expect(position.startLabel).toBe("All day");
   });
@@ -61,7 +62,7 @@ describe("eventToPosition", () => {
       timezone: "America/Chicago",
     };
 
-    const position = eventToPosition(chicagoEvent, "America/Chicago");
+    const position = eventToPosition(chicagoEvent, "America/Chicago", "2026-06-15");
     const expectedTop =
       TIMELINE_EDGE_PADDING_PX +
       ((8 - TIMELINE_DAY_START_HOUR) * 60) / 60 * PX_PER_HOUR -
@@ -78,7 +79,7 @@ describe("eventToPosition", () => {
       timezone: "America/Chicago",
     };
 
-    const position = eventToPosition(chicagoEvent, "America/New_York");
+    const position = eventToPosition(chicagoEvent, "America/New_York", "2026-06-15");
     const expectedTop =
       TIMELINE_EDGE_PADDING_PX +
       ((9 - TIMELINE_DAY_START_HOUR) * 60) / 60 * PX_PER_HOUR -

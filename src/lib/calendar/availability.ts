@@ -6,6 +6,7 @@ import {
   WAKING_END_HOUR,
   WAKING_START_HOUR,
 } from "@/lib/calendar/constants";
+import { getEventSegmentForDay } from "@/lib/calendar/event-segments";
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -28,6 +29,7 @@ export type CalendarAvailabilityDot = {
 export type DayAvailability = {
   date: string;
   status: DayStatus;
+  busyRatio: number;
   dots: AvailabilityDot[];
   calendarDots: CalendarAvailabilityDot[];
 };
@@ -43,7 +45,7 @@ export function statusCellClass(status: DayStatus): string {
     case "busy":
       return "bg-status-busy/25";
     case "partial":
-      return "bg-gradient-to-b from-status-busy/30 to-status-free/20";
+      return "bg-surface/40";
     case "holiday":
       return "bg-status-holiday/15";
     default:
@@ -80,21 +82,33 @@ function busyMinutesOnDate(
     `${dateParam}T${String(WAKING_START_HOUR).padStart(2, "0")}:00:00`,
     timezone,
   );
-  const wakingEnd = fromZonedTime(
-    `${dateParam}T${String(WAKING_END_HOUR).padStart(2, "0")}:00:00`,
-    timezone,
-  );
+  const wakingEnd =
+    WAKING_END_HOUR >= 24
+      ? fromZonedTime(
+          `${addCalendarDays(dateParam, 1, timezone)}T00:00:00`,
+          timezone,
+        )
+      : fromZonedTime(
+          `${dateParam}T${String(WAKING_END_HOUR).padStart(2, "0")}:00:00`,
+          timezone,
+        );
   const wakingMinutes = differenceInMinutes(wakingEnd, wakingStart);
 
   let busy = 0;
 
   for (const event of dayEvents) {
-    if (event.isAllDay) {
-      return wakingMinutes;
+    const segment = getEventSegmentForDay(event, dateParam, timezone);
+    if (!segment) {
+      continue;
     }
 
-    const start = parseISO(event.startAt);
-    const end = parseISO(event.endAt);
+    if (segment.isAllDaySegment || event.isAllDay) {
+      busy = wakingMinutes;
+      continue;
+    }
+
+    const start = parseISO(segment.segmentStartAt);
+    const end = parseISO(segment.segmentEndAt);
     const clampedStart = start < wakingStart ? wakingStart : start;
     const clampedEnd = end > wakingEnd ? wakingEnd : end;
 
@@ -102,7 +116,12 @@ function busyMinutesOnDate(
       busy += differenceInMinutes(clampedEnd, clampedStart);
     }
 
-    busy += event.travelBeforeMinutes + event.travelAfterMinutes;
+    if (dateParam === formatCalendarDate(parseISO(event.startAt), timezone)) {
+      busy += event.travelBeforeMinutes;
+    }
+    if (dateParam === formatCalendarDate(parseISO(event.endAt), timezone)) {
+      busy += event.travelAfterMinutes;
+    }
   }
 
   return Math.min(busy, wakingMinutes);
@@ -209,6 +228,7 @@ export function computeDayAvailability(
   return {
     date: dateKey(date, timezone),
     status,
+    busyRatio,
     dots: buildDots(dayEvents, status),
     calendarDots: buildCalendarDots(dayEvents),
   };

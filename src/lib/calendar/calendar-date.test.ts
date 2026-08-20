@@ -4,8 +4,10 @@ import {
   addCalendarDays,
   formatCalendarDate,
   formatDayHeading,
+  formatFullDateHeading,
   formatMonthYearHeading,
   formatOrdinalDay,
+  formatWeekdayHeading,
   formatYearHeading,
   getCalendarDayOfWeek,
   getCalendarDayUtcRange,
@@ -127,6 +129,18 @@ describe("formatOrdinalDay", () => {
 describe("formatDayHeading", () => {
   it("returns weekday and ordinal date in display timezone", () => {
     expect(formatDayHeading("2026-08-19", TZ)).toBe("Wednesday the 19th");
+  });
+});
+
+describe("formatWeekdayHeading", () => {
+  it("returns uppercase weekday in display timezone", () => {
+    expect(formatWeekdayHeading("2026-08-19", TZ)).toBe("WEDNESDAY");
+  });
+});
+
+describe("formatFullDateHeading", () => {
+  it("returns full date in display timezone", () => {
+    expect(formatFullDateHeading("2026-08-19", TZ)).toBe("August 19, 2026");
   });
 });
 

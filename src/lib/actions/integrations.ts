@@ -86,7 +86,7 @@ export async function syncNow(): Promise<ActionResult<null>> {
       await runConnectionSync(supabase, connection);
     }
     revalidatePath("/calendars");
-    revalidatePath("/day");
+    revalidatePath("/week");
     revalidatePath("/month");
     revalidatePath("/year");
     return actionSuccess(null);

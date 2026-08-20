@@ -54,10 +54,15 @@ export function WeekStrip({
           formatCalendarDate(new Date(), displayTimezone) === weekDateParam;
         const dayAvailability = availability[weekDateParam];
 
+        const showPartialSplit =
+          !isSpecific &&
+          dayAvailability?.status === "partial" &&
+          (dayAvailability.busyRatio ?? 0) > 0;
+
         return (
           <Link
             key={weekDateParam}
-            href={`/day?date=${weekDateParam}`}
+            href={`/week?date=${weekDateParam}`}
             className="flex flex-col items-center gap-1"
           >
             <span className="text-[10px] uppercase text-text-secondary">
@@ -65,14 +70,12 @@ export function WeekStrip({
             </span>
             <span
               className={cn(
-                "flex w-full min-h-[3.5rem] flex-col rounded-md p-1",
+                "relative flex w-full min-h-[3.5rem] flex-col overflow-hidden rounded-md p-1",
                 isSpecific
                   ? neutralCellClass()
                   : dayAvailability?.status === "free" && "bg-status-free/10",
                 !isSpecific && dayAvailability?.status === "busy" && "bg-status-busy/10",
-                !isSpecific &&
-                  dayAvailability?.status === "partial" &&
-                  "bg-gradient-to-b from-status-busy/15 to-status-free/10",
+                showPartialSplit && "bg-surface/40",
                 !isSpecific &&
                   dayAvailability?.status === "holiday" &&
                   "bg-status-holiday/10",
@@ -80,9 +83,22 @@ export function WeekStrip({
                 isSelected && !isToday && "ring-2 ring-white",
               )}
             >
+              {showPartialSplit ? (
+                <span className="absolute inset-0 flex flex-col">
+                  <span
+                    className="bg-status-busy/30"
+                    style={{ flex: Math.max(dayAvailability!.busyRatio, 0.05) }}
+                  />
+                  <span className="h-px shrink-0 bg-background/80" />
+                  <span
+                    className="bg-status-free/20"
+                    style={{ flex: Math.max(1 - dayAvailability!.busyRatio, 0.05) }}
+                  />
+                </span>
+              ) : null}
               <span
                 className={cn(
-                  "flex flex-1 items-center justify-center",
+                  "relative z-10 flex flex-1 items-center justify-center",
                   isToday && "text-2xl font-extrabold text-accent",
                   !isToday && isSelected && "text-sm text-text-primary",
                   !isToday && !isSelected && "text-sm text-text-secondary",
@@ -90,7 +106,7 @@ export function WeekStrip({
               >
                 {formatInTimeZone(date, displayTimezone, "d")}
               </span>
-              <div className="mt-auto flex h-1.5 justify-center gap-0.5">
+              <div className="relative z-10 mt-auto flex h-1.5 justify-center gap-0.5">
                 {isSpecific
                   ? (dayAvailability?.calendarDots ?? []).slice(0, 5).map((dot) => (
                       <span

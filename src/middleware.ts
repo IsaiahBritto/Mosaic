@@ -15,9 +15,15 @@ export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
+  if (pathname === "/day" || pathname.startsWith("/day/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/day/, "/week");
+    return NextResponse.redirect(url);
+  }
+
   if (pathname === "/") {
     const url = request.nextUrl.clone();
-    url.pathname = user ? "/day" : "/login";
+    url.pathname = user ? "/month" : "/login";
     return NextResponse.redirect(url);
   }
 
@@ -30,7 +36,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && authRoutes.includes(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/day";
+    url.pathname = "/month";
     return NextResponse.redirect(url);
   }
 

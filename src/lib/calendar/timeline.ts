@@ -9,6 +9,7 @@ import {
   TIMELINE_TOTAL_HOURS,
 } from "@/lib/calendar/constants";
 import { formatEventTime } from "@/lib/calendar/timezone";
+import { getEventSegmentForDay } from "@/lib/calendar/event-segments";
 import type { EventInstance } from "@/types/event";
 
 export const SNAP_INTERVAL_MINUTES = 15;
@@ -130,7 +131,21 @@ export function applyMinutesDeltaToEvent(
 export function eventToPosition(
   event: EventInstance,
   displayTimezone: string,
+  dateParam: string,
 ): EventPosition {
+  const segment = getEventSegmentForDay(event, dateParam, displayTimezone);
+
+  if (!segment) {
+    return {
+      top: 0,
+      height: 0,
+      startLabel: "",
+      endLabel: "",
+      travelBeforeHeight: 0,
+      travelAfterHeight: 0,
+    };
+  }
+
   if (event.isAllDay) {
     return {
       top: 0,
@@ -144,15 +159,21 @@ export function eventToPosition(
 
   const startMinutes = Math.max(
     0,
-    minutesFromTimelineStart(event.startAt, displayTimezone),
+    minutesFromTimelineStart(segment.segmentStartAt, displayTimezone),
   );
   const endMinutes = Math.max(
     startMinutes + MIN_EVENT_DURATION_MINUTES,
-    minutesFromTimelineStart(event.endAt, displayTimezone),
+    minutesFromTimelineStart(segment.segmentEndAt, displayTimezone),
   );
 
-  const travelBeforeHeight = (event.travelBeforeMinutes / 60) * PX_PER_HOUR;
-  const travelAfterHeight = (event.travelAfterMinutes / 60) * PX_PER_HOUR;
+  const travelBeforeHeight =
+    dateParam === dateParamFromIso(event.startAt, displayTimezone)
+      ? (event.travelBeforeMinutes / 60) * PX_PER_HOUR
+      : 0;
+  const travelAfterHeight =
+    dateParam === dateParamFromIso(event.endAt, displayTimezone)
+      ? (event.travelAfterMinutes / 60) * PX_PER_HOUR
+      : 0;
   const top =
     TIMELINE_EDGE_PADDING_PX +
     (startMinutes / 60) * PX_PER_HOUR -
@@ -167,11 +188,15 @@ export function eventToPosition(
   return {
     top: Math.max(0, top),
     height,
-    startLabel: formatEventTime(event.startAt, displayTimezone, false),
-    endLabel: formatEventTime(event.endAt, displayTimezone, false),
+    startLabel: formatEventTime(segment.segmentStartAt, displayTimezone, segment.isAllDaySegment),
+    endLabel: formatEventTime(segment.segmentEndAt, displayTimezone, segment.isAllDaySegment),
     travelBeforeHeight,
     travelAfterHeight,
   };
+}
+
+function dateParamFromIso(iso: string, timezone: string): string {
+  return formatInTimeZone(parseISO(iso), timezone, "yyyy-MM-dd");
 }
 
 export function slotToStartTime(

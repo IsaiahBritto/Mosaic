@@ -82,7 +82,7 @@ export async function setDayViewMode(
     return actionError("UNKNOWN", error.message);
   }
 
-  revalidatePath("/day");
+  revalidatePath("/week");
   return actionSuccess(null);
 }
 
@@ -154,7 +154,7 @@ export async function setAvailabilityDisplayMode(
     return actionError("UNKNOWN", error.message);
   }
 
-  revalidatePath("/day");
+  revalidatePath("/week");
   revalidatePath("/month");
   revalidatePath("/year");
   return actionSuccess(null);
@@ -198,7 +198,7 @@ export async function syncDefaultTimezone(
     return actionError("UNKNOWN", error.message);
   }
 
-  revalidatePath("/day");
+  revalidatePath("/week");
   revalidatePath("/month");
   revalidatePath("/year");
   return actionSuccess(null);

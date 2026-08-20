@@ -69,8 +69,13 @@ export const eventFormSchema = z
       if (isEndBeforeStart(startAt, endAt)) {
         ctx.addIssue({
           code: "custom",
-          message: "End must be on or after start",
+          message: "End must be after start",
           path: ["endDate"],
+        });
+        ctx.addIssue({
+          code: "custom",
+          message: "End must be after start",
+          path: ["endTime"],
         });
       }
     } catch {

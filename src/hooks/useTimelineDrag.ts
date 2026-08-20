@@ -21,6 +21,7 @@ export type TimelineDragMode = "move" | "resizeStart" | "resizeEnd";
 type UseTimelineDragOptions = {
   event: EventInstance;
   displayTimezone: string;
+  dateParam: string;
   timelineRef: React.RefObject<HTMLElement | null>;
 };
 
@@ -41,6 +42,7 @@ type DragState = {
 export function useTimelineDrag({
   event,
   displayTimezone,
+  dateParam,
   timelineRef,
 }: UseTimelineDragOptions) {
   const [preview, setPreview] = useState<EventPosition | null>(null);
@@ -48,7 +50,7 @@ export function useTimelineDrag({
   const dragState = useRef<DragState | null>(null);
   const didDragRef = useRef(false);
 
-  const basePosition = eventToPosition(event, displayTimezone);
+  const basePosition = eventToPosition(event, displayTimezone, dateParam);
 
   const computePreview = useCallback(
     (deltaMinutes: number, mode: TimelineDragMode): EventPosition => {
@@ -132,7 +134,7 @@ export function useTimelineDrag({
       }
 
       const deltaY = pointerEvent.clientY - dragState.current.startY;
-      if (Math.abs(deltaY) > 4) {
+      if (Math.abs(deltaY) > 5) {
         dragState.current.moved = true;
         didDragRef.current = true;
       }

@@ -7,7 +7,7 @@ export const MIN_EVENT_HEIGHT_PX = 40;
 export const TIMELINE_EDGE_PADDING_PX = 16;
 
 export const WAKING_START_HOUR = 8;
-export const WAKING_END_HOUR = 22;
+export const WAKING_END_HOUR = 24;
 export const PARTIAL_THRESHOLD = 0.5;
 export const BUSY_EVENT_COUNT = 3;
 

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
-import { AvailabilityDisplayPanel } from "@/components/calendar/AvailabilityDisplayPanel";
+import { MonthDayEventsPanel } from "@/components/calendar/MonthDayEventsPanel";
 import {
   computeRangeAvailability,
   getMonthGridDates,
@@ -30,14 +30,7 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     redirect("/login");
   }
 
-  const { groups, visibleIds, calendars } = await getCalendarsPageData(supabase, user.id);
-  const visibleCalendars = calendars
-    .filter((calendar) => visibleIds.includes(calendar.id))
-    .map((calendar) => ({
-      id: calendar.id,
-      name: calendar.name,
-      colorHex: calendar.colorHex,
-    }));
+  const { groups, visibleIds } = await getCalendarsPageData(supabase, user.id);
 
   const { data: prefs } = await supabase
     .from("user_preferences")
@@ -66,6 +59,15 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
   const selectedDateParam =
     params.select === "none" ? undefined : dateParam;
 
+  const { start: selectedDayStart, end: selectedDayEnd } = getCalendarDayUtcRange(
+    selectedDateParam ?? dateParam,
+    timezone,
+  );
+  const selectedDayEvents =
+    selectedDateParam !== undefined
+      ? await getExpandedEventsInRange(selectedDayStart, selectedDayEnd)
+      : [];
+
   return (
     <div className="flex flex-1 flex-col">
       {hasVisibleCalendars ? (
@@ -76,7 +78,13 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
             availabilityMap={availabilityMap}
             timezone={timezone}
           />
-          <AvailabilityDisplayPanel calendars={visibleCalendars} />
+          {selectedDateParam !== undefined ? (
+            <MonthDayEventsPanel
+              dateParam={selectedDateParam}
+              timezone={timezone}
+              events={selectedDayEvents}
+            />
+          ) : null}
         </>
       ) : null}
 

@@ -1,16 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { DayAvailability, DayStatus } from "@/lib/calendar/availability";
 import { neutralCellClass, statusCellClass } from "@/lib/calendar/availability";
 import { useAvailabilityDisplayMode } from "@/components/calendar/AvailabilityDisplayContext";
-import { withCalendarDateParam } from "@/lib/calendar/timezone";
 import { cn } from "@/lib/utils/cn";
 
-const DOT_COLORS: Record<DayStatus, string> = {
+const DOT_COLORS: Record<Exclude<DayStatus, "partial">, string> = {
   free: "bg-status-free",
   busy: "bg-status-busy",
-  partial: "bg-gradient-to-r from-status-busy to-status-free",
   holiday: "bg-status-holiday",
 };
 
@@ -21,8 +19,16 @@ type MonthCellProps = {
   isSelected?: boolean;
   availability?: DayAvailability;
   compact?: boolean;
-  href?: string;
 };
+
+function PartialDot() {
+  return (
+    <span className="flex h-1 w-1 overflow-hidden rounded-full">
+      <span className="w-1/2 bg-status-busy" />
+      <span className="w-1/2 bg-status-free" />
+    </span>
+  );
+}
 
 export function MonthCell({
   dateParam,
@@ -31,28 +37,52 @@ export function MonthCell({
   isSelected = false,
   availability,
   compact = false,
-  href,
 }: MonthCellProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const mode = useAvailabilityDisplayMode();
   const isSpecific = mode === "specific";
   const status = availability?.status ?? "free";
-  const linkHref = href ?? withCalendarDateParam("/day", dateParam);
+  const busyRatio = availability?.busyRatio ?? 0;
+  const showPartialSplit = !isSpecific && status === "partial" && busyRatio > 0;
+
+  function handleSelect() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("date", dateParam);
+    params.delete("select");
+    router.push(`/month?${params.toString()}`, { scroll: false });
+  }
 
   return (
-    <Link
-      href={linkHref}
+    <button
+      type="button"
+      onClick={handleSelect}
       className={cn(
-        "flex flex-col rounded-md transition-opacity hover:opacity-90",
-        isSpecific ? neutralCellClass() : statusCellClass(status),
+        "relative flex flex-col overflow-hidden rounded-md transition-opacity hover:opacity-90",
+        !showPartialSplit && (isSpecific ? neutralCellClass() : statusCellClass(status)),
         compact ? "min-h-[2rem] p-0.5" : "min-h-[3.5rem] p-1",
         !isCurrentMonth && "opacity-40",
         isSelected && isToday && "ring-2 ring-accent",
         isSelected && !isToday && "ring-2 ring-white",
       )}
     >
+      {showPartialSplit ? (
+        <div className="absolute inset-0 flex flex-col">
+          <div
+            className="bg-status-busy/30"
+            style={{ flex: Math.max(busyRatio, 0.05) }}
+          />
+          <div className="h-px shrink-0 bg-background/80" />
+          <div
+            className="bg-status-free/20"
+            style={{ flex: Math.max(1 - busyRatio, 0.05) }}
+          />
+        </div>
+      ) : null}
+
       <span
         className={cn(
-          "text-center",
+          "relative z-10 text-center",
           compact ? "text-[10px]" : isToday ? "text-2xl font-extrabold" : "text-sm",
           isToday && "text-accent",
           !isToday && !isSpecific && status === "holiday" && "text-status-holiday",
@@ -63,7 +93,7 @@ export function MonthCell({
       </span>
 
       {!compact && isSpecific && (availability?.calendarDots?.length ?? 0) > 0 ? (
-        <div className="mt-auto flex justify-center gap-0.5 pt-1">
+        <div className="relative z-10 mt-auto flex justify-center gap-0.5 pt-1">
           {availability!.calendarDots.slice(0, 5).map((dot) => (
             <span
               key={`${dateParam}-${dot.calendarId}`}
@@ -75,15 +105,19 @@ export function MonthCell({
       ) : null}
 
       {!compact && !isSpecific && availability?.dots?.length ? (
-        <div className="mt-auto flex justify-center gap-0.5 pt-1">
-          {availability.dots.map((dot, index) => (
-            <span
-              key={`${dateParam}-dot-${index}`}
-              className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
-            />
-          ))}
+        <div className="relative z-10 mt-auto flex justify-center gap-0.5 pt-1">
+          {availability.dots.map((dot, index) =>
+            dot === "partial" ? (
+              <PartialDot key={`${dateParam}-dot-${index}`} />
+            ) : (
+              <span
+                key={`${dateParam}-dot-${index}`}
+                className={cn("h-1 w-1 rounded-full", DOT_COLORS[dot])}
+              />
+            ),
+          )}
         </div>
       ) : null}
-    </Link>
+    </button>
   );
 }

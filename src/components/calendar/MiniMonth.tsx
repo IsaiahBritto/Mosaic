@@ -30,13 +30,22 @@ export function MiniMonth({
     timezone,
     "MMMM",
   ).toUpperCase();
+  const isCurrentMonth =
+    monthDateParam.slice(0, 7) === todayDateParam.slice(0, 7);
 
   return (
     <Link
       href={`/month?date=${monthDateParam}&select=none`}
       className="block rounded-lg bg-surface/40 p-2 transition-opacity hover:opacity-90"
     >
-      <h3 className="mb-2 text-center text-[10px] font-bold tracking-widest text-text-secondary">
+      <h3
+        className={cn(
+          "mb-2 text-center tracking-widest",
+          isCurrentMonth
+            ? "text-sm font-extrabold text-text-primary"
+            : "text-[10px] font-bold text-text-secondary",
+        )}
+      >
         {monthName}
       </h3>
       <div className="mb-1 grid grid-cols-7 gap-0.5 text-center">

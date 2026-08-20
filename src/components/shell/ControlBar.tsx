@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { formatCalendarDate } from "@/lib/calendar/timezone";
 import { setDayViewMode } from "@/lib/actions/views";
+import { buildReturnTo } from "@/lib/navigation/return-to";
 import { Toggle } from "@/components/ui/Toggle";
 
 type ControlBarProps = {
@@ -28,7 +29,7 @@ export function ControlBar({
 
   const viewParam = searchParams.get("view");
   const isAgenda =
-    pathname.startsWith("/day") &&
+    pathname.startsWith("/week") &&
     (viewParam === "agenda" ||
       (!viewParam && defaultViewMode === "agenda"));
 
@@ -43,15 +44,17 @@ export function ControlBar({
       params.delete("view");
     }
 
+    router.replace(`${pathname}?${params.toString()}`);
+
     startTransition(async () => {
       await setDayViewMode(mode);
-      router.push(`${pathname}?${params.toString()}`);
-      router.refresh();
     });
   }
 
-  const showViewToggle = pathname.startsWith("/day");
+  const showViewToggle = pathname.startsWith("/week");
   const showCalendarsLink = variant === "full";
+  const returnTo = buildReturnTo(pathname, searchParams.toString());
+  const newEventHref = `/events/new?date=${dateParam}&returnTo=${returnTo}`;
 
   return (
     <div className="flex items-center justify-between border-y border-surface px-4 py-3">
@@ -80,7 +83,7 @@ export function ControlBar({
       )}
 
       <Link
-        href={`/events/new?date=${dateParam}`}
+        href={newEventHref}
         className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-lg text-accent ring-1 ring-accent/30"
         aria-label="New event"
       >

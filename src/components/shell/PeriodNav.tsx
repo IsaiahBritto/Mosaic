@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  formatDayHeading,
+  formatFullDateHeading,
   formatMonthYearHeading,
+  formatWeekdayHeading,
   formatYearHeading,
   getTodayCalendarDate,
   shiftCalendarDateParam,
@@ -14,13 +15,34 @@ import { cn } from "@/lib/utils/cn";
 type PeriodNavProps = {
   dateParam: string;
   displayTimezone: string;
-  mode: "month" | "day" | "year";
+  mode: "month" | "week" | "year";
 };
+
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className={direction === "right" ? "rotate-180" : undefined}
+    >
+      <path
+        d="M10 3L5 8L10 13"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function getLabel(
   dateParam: string,
   displayTimezone: string,
-  mode: Exclude<PeriodNavProps["mode"], "day">,
+  mode: Exclude<PeriodNavProps["mode"], "week">,
 ): string {
   switch (mode) {
     case "month":
@@ -35,7 +57,7 @@ export function PeriodNav({ dateParam, displayTimezone, mode }: PeriodNavProps) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const label =
-    mode === "day" ? null : getLabel(dateParam, displayTimezone, mode);
+    mode === "week" ? null : getLabel(dateParam, displayTimezone, mode);
   const todayParam = getTodayCalendarDate(displayTimezone);
   const isMonthView = pathname.startsWith("/month");
   const isAtTodayMonth =
@@ -56,24 +78,32 @@ export function PeriodNav({ dateParam, displayTimezone, mode }: PeriodNavProps) 
       <button
         type="button"
         onClick={() => shiftAndNavigate(-1)}
-        className="shrink-0 px-1 text-sm text-text-secondary hover:text-text-primary"
+        className={cn(
+          "flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full",
+          "text-text-secondary transition-colors hover:bg-surface hover:text-text-primary",
+        )}
         aria-label="Previous"
       >
-        &lt;
+        <ChevronIcon direction="left" />
       </button>
 
       <div className="flex flex-1 flex-col items-center gap-1">
-        {mode === "day" ? (
+        {mode === "week" ? (
           <>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-              {formatMonthYearHeading(dateParam, displayTimezone)}
-            </p>
             <h2 className="text-center text-base font-bold uppercase tracking-widest text-text-primary">
-              {formatDayHeading(dateParam, displayTimezone)}
+              {formatWeekdayHeading(dateParam, displayTimezone)}
             </h2>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-text-secondary">
+              {formatFullDateHeading(dateParam, displayTimezone)}
+            </p>
           </>
         ) : (
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-text-primary">
+          <h2
+            className={cn(
+              "text-center font-bold uppercase tracking-widest text-text-primary",
+              mode === "year" ? "text-base" : "text-sm",
+            )}
+          >
             {label}
           </h2>
         )}
@@ -93,10 +123,13 @@ export function PeriodNav({ dateParam, displayTimezone, mode }: PeriodNavProps) 
       <button
         type="button"
         onClick={() => shiftAndNavigate(1)}
-        className="shrink-0 px-1 text-sm text-text-secondary hover:text-text-primary"
+        className={cn(
+          "flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full",
+          "text-text-secondary transition-colors hover:bg-surface hover:text-text-primary",
+        )}
         aria-label="Next"
       >
-        &gt;
+        <ChevronIcon direction="right" />
       </button>
     </div>
   );

@@ -43,8 +43,8 @@ describe("shiftDate", () => {
 
 describe("withDateParam", () => {
   it("builds path with date query", () => {
-    expect(withDateParam("/day", new Date(2026, 7, 21))).toBe(
-      "/day?date=2026-08-21",
+    expect(withDateParam("/week", new Date(2026, 7, 21))).toBe(
+      "/week?date=2026-08-21",
     );
   });
 });

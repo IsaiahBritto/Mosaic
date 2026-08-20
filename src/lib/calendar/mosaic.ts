@@ -2,6 +2,7 @@ import { parseISO } from "date-fns";
 import {
   addCalendarDays,
   getCalendarDayUtcRange,
+  getTodayCalendarDate,
 } from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
 
@@ -29,8 +30,13 @@ export function getDayMosaicColors(
   events: EventInstance[],
   timezone: string,
 ): string[] {
+  const todayParam = getTodayCalendarDate(timezone);
+  if (dateParam > todayParam) {
+    return [];
+  }
+
   const dayEvents = eventsOnDate(dateParam, events, timezone).sort(
-    (a, b) => parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime(),
+    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
   );
 
   const colors: string[] = [];

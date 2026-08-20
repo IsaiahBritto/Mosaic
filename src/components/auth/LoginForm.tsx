@@ -28,7 +28,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/day");
+      router.push("/month");
       router.refresh();
     });
   }

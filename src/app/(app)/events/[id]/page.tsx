@@ -7,11 +7,12 @@ import {
   getExitDateFromEvent,
   getWritableCalendarOptions,
 } from "@/lib/services/event.service";
+import { sanitizeReturnTo } from "@/lib/navigation/return-to";
 import { EventForm } from "@/components/events/EventForm";
 
 type EditEventPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; returnTo?: string }>;
 };
 
 export default async function EditEventPage({
@@ -42,9 +43,11 @@ export default async function EditEventPage({
     redirect("/calendars");
   }
 
-  const exitHref = query.date
-    ? withDateParam("/day", parseDateParam(query.date))
-    : withDateParam("/day", getExitDateFromEvent(event));
+  const fallbackDate = query.date
+    ? parseDateParam(query.date)
+    : getExitDateFromEvent(event);
+  const exitHref =
+    sanitizeReturnTo(query.returnTo) ?? withDateParam("/week", fallbackDate);
 
   return (
     <EventForm

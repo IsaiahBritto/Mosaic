@@ -13,11 +13,16 @@ import {
 } from "@/hooks/useTimelineDrag";
 import type { EventInstance } from "@/types/event";
 import { RecurrenceScopeDialog } from "@/components/events/RecurrenceScopeDialog";
+import {
+  EventCardContent,
+  TravelZone,
+} from "@/components/events/EventCardContent";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils/cn";
 
 type DraggableEventBlockProps = {
   event: EventInstance;
+  dateParam: string;
   displayTimezone: string;
   editHref: string;
   canEdit: boolean;
@@ -32,11 +37,61 @@ type PendingReschedule = {
 };
 
 function isRecurringInstance(event: EventInstance): boolean {
-  return event.instanceId !== event.masterEventId;
+  return Boolean(event.recurrence) || event.instanceId !== event.masterEventId;
+}
+
+function TimelineBlockBody({
+  event,
+  position,
+}: {
+  event: EventInstance;
+  position: EventPosition;
+}) {
+  const eventBodyTop = position.travelBeforeHeight;
+  const eventBodyHeight = Math.max(
+    position.height - position.travelBeforeHeight - position.travelAfterHeight,
+    0,
+  );
+
+  return (
+    <>
+      {position.travelBeforeHeight > 0 ? (
+        <TravelZone
+          calendarColor={event.calendarColor}
+          className="absolute inset-x-0 top-0"
+          style={{ height: position.travelBeforeHeight }}
+        />
+      ) : null}
+
+      <div
+        className="absolute inset-x-0 overflow-hidden px-2 py-1"
+        style={{ top: eventBodyTop, height: eventBodyHeight }}
+      >
+        <EventCardContent
+          title={event.title}
+          location={event.location}
+          startTime={position.startLabel}
+          endTime={position.endLabel}
+          isRecurring={isRecurringInstance(event)}
+          textOnColor
+        />
+      </div>
+
+      {position.travelAfterHeight > 0 ? (
+        <TravelZone
+          calendarColor={event.calendarColor}
+          label="Travel after"
+          className="absolute inset-x-0 bottom-0"
+          style={{ height: position.travelAfterHeight }}
+        />
+      ) : null}
+    </>
+  );
 }
 
 export function DraggableEventBlock({
   event,
+  dateParam,
   displayTimezone,
   editHref,
   canEdit,
@@ -61,11 +116,12 @@ export function DraggableEventBlock({
   } = useTimelineDrag({
     event,
     displayTimezone,
+    dateParam,
     timelineRef,
   });
 
   const position: EventPosition =
-    preview ?? eventToPosition(event, displayTimezone);
+    preview ?? eventToPosition(event, displayTimezone, dateParam);
 
   function submitReschedule(payload: PendingReschedule, scope: "single" | "series") {
     startTransition(async () => {
@@ -118,39 +174,7 @@ export function DraggableEventBlock({
     lastClickTime.current = now;
   }
 
-  const blockBody = (
-    <>
-      {position.travelBeforeHeight > 0 ? (
-        <div
-          className="absolute inset-x-0 top-0 bg-travel-time/40"
-          style={{ height: position.travelBeforeHeight }}
-        />
-      ) : null}
-      <div className="relative flex h-full flex-col justify-between text-background">
-        <div className="flex items-start justify-between gap-2">
-          <span className="truncate font-semibold uppercase">{event.title}</span>
-          <span className="shrink-0 opacity-90">{position.startLabel}</span>
-        </div>
-        {event.location ? (
-          <span className="truncate italic opacity-90">{event.location}</span>
-        ) : (
-          <span />
-        )}
-        <div className="flex items-end justify-between gap-2">
-          <span />
-          <span className="shrink-0 text-[10px] uppercase opacity-90">
-            End {position.endLabel}
-          </span>
-        </div>
-      </div>
-      {position.travelAfterHeight > 0 ? (
-        <div
-          className="absolute inset-x-0 bottom-0 bg-travel-time/40"
-          style={{ height: position.travelAfterHeight }}
-        />
-      ) : null}
-    </>
-  );
+  const blockBody = <TimelineBlockBody event={event} position={position} />;
 
   if (!canEdit) {
     return (
@@ -190,7 +214,7 @@ export function DraggableEventBlock({
         }}
       >
         <div
-          className="absolute inset-x-0 top-0 z-10 h-2 cursor-ns-resize"
+          className="absolute inset-x-0 top-0 z-10 h-3 cursor-ns-resize"
           style={{ top: position.travelBeforeHeight }}
           onPointerDown={(pointerEvent) => {
             onDragActiveChange?.(true);
@@ -199,7 +223,7 @@ export function DraggableEventBlock({
         />
 
         <div
-          className="relative h-full px-2 py-1"
+          className="relative h-full"
           onPointerDown={(pointerEvent) => {
             onDragActiveChange?.(true);
             handlePointerDown(pointerEvent, "move");
@@ -209,7 +233,7 @@ export function DraggableEventBlock({
         </div>
 
         <div
-          className="absolute inset-x-0 bottom-0 z-10 h-2 cursor-ns-resize"
+          className="absolute inset-x-0 bottom-0 z-10 h-3 cursor-ns-resize"
           style={{ bottom: position.travelAfterHeight }}
           onPointerDown={(pointerEvent) => {
             onDragActiveChange?.(true);

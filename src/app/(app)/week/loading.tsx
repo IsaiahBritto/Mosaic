@@ -1,4 +1,4 @@
-export default function DayLoading() {
+export default function WeekLoading() {
   return (
     <div className="flex flex-1 flex-col gap-3 px-4 py-4 animate-pulse">
       <div className="h-16 rounded-lg bg-surface" />

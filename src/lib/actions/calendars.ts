@@ -28,7 +28,7 @@ import {
 
 function revalidateCalendarViews() {
   revalidatePath("/month");
-  revalidatePath("/day");
+  revalidatePath("/week");
   revalidatePath("/year");
   revalidatePath("/calendars");
 }

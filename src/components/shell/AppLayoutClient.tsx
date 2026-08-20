@@ -35,7 +35,7 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
     displayTimezone,
   );
   const fullScreen = isFullScreenRoute(pathname);
-  const isDay = pathname.startsWith("/day");
+  const isWeek = pathname.startsWith("/week");
   const isMonth = pathname.startsWith("/month");
   const isYear = pathname.startsWith("/year");
   const { collapsed, onScroll } = useScrollCollapse();
@@ -48,7 +48,7 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
     );
   }
 
-  if (isDay) {
+  if (isWeek) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
         <header className="sticky top-0 z-20 shrink-0 bg-background">
@@ -56,7 +56,7 @@ function AppLayoutInner({ children, displayTimezone }: AppLayoutInnerProps) {
           <PeriodNav
             dateParam={dateParam}
             displayTimezone={displayTimezone}
-            mode="day"
+            mode="week"
           />
           <WeekStrip
             dateParam={dateParam}

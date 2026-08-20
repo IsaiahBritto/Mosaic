@@ -163,32 +163,36 @@ export function EventForm({
         <div className="grid grid-cols-2 gap-3">
           {!isAllDay ? (
             <>
-              <TimeInput
-                label="Start Time"
-                value={watch("startTime")}
-                onChange={(value) =>
-                  setValue("startTime", value, { shouldDirty: true, shouldValidate: true })
-                }
-                error={errors.startTime?.message}
-              />
-              <DateInput
-                label="Start Day"
-                {...register("startDate")}
-                error={errors.startDate?.message}
-              />
-              <TimeInput
-                label="End Time"
-                value={watch("endTime")}
-                onChange={(value) =>
-                  setValue("endTime", value, { shouldDirty: true, shouldValidate: true })
-                }
-                error={errors.endTime?.message}
-              />
-              <DateInput
-                label="End Day"
-                {...register("endDate")}
-                error={errors.endDate?.message}
-              />
+              <div className="flex flex-col gap-3">
+                <TimeInput
+                  label="Start Time"
+                  value={watch("startTime")}
+                  onChange={(value) =>
+                    setValue("startTime", value, { shouldDirty: true, shouldValidate: true })
+                  }
+                  error={errors.startTime?.message ?? errors.endDate?.message}
+                />
+                <DateInput
+                  label="Start Day"
+                  {...register("startDate")}
+                  error={errors.startDate?.message}
+                />
+              </div>
+              <div className="flex flex-col gap-3">
+                <TimeInput
+                  label="End Time"
+                  value={watch("endTime")}
+                  onChange={(value) =>
+                    setValue("endTime", value, { shouldDirty: true, shouldValidate: true })
+                  }
+                  error={errors.endTime?.message ?? errors.endDate?.message}
+                />
+                <DateInput
+                  label="End Day"
+                  {...register("endDate")}
+                  error={errors.endDate?.message ?? errors.endTime?.message}
+                />
+              </div>
             </>
           ) : (
             <>
@@ -261,10 +265,7 @@ export function EventForm({
           ) : null}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
-          <input type="checkbox" {...register("isHoliday")} />
-          Mark as holiday
-        </label>
+        <input type="hidden" {...register("isHoliday")} />
 
         <Button type="submit" size="lg" disabled={isPending}>
           {isPending ? "Saving…" : "Save Event"}

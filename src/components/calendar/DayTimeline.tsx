@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import {
   formatCalendarDate,
@@ -12,6 +13,7 @@ import {
   TIMELINE_EDGE_PADDING_PX,
   TIMELINE_HEIGHT_PX,
   PX_PER_HOUR,
+  WAKING_START_HOUR,
 } from "@/lib/calendar/constants";
 import {
   getTimelineHours,
@@ -19,12 +21,15 @@ import {
   pxToSnappedMinutes,
   toEventDisplayData,
 } from "@/lib/calendar/timeline";
+import { getEventSegmentForDay } from "@/lib/calendar/event-segments";
+import { buildReturnTo } from "@/lib/navigation/return-to";
 import type { EventInstance } from "@/types/event";
 import { DraggableEventBlock } from "@/components/events/DraggableEventBlock";
 import { EventCard } from "@/components/events/EventCard";
 import { TimeRail } from "@/components/calendar/TimeRail";
 
-const DEFAULT_SCROLL_HOUR = 6;
+const SCROLL_PADDING_PX = 8;
+const WHEEL_DAMPENING = 0.4;
 
 type DayTimelineProps = {
   date: Date;
@@ -33,6 +38,31 @@ type DayTimelineProps = {
   writableCalendarIds: string[];
 };
 
+function getScrollTargetHour(
+  events: EventInstance[],
+  displayTimezone: string,
+  dateParam: string,
+): number {
+  const timedEvents = events.filter((event) => !event.isAllDay);
+
+  if (timedEvents.length > 0) {
+    const earliest = timedEvents.reduce((min, event) => {
+      const hour = Number(
+        formatInTimeZone(parseISO(event.startAt), displayTimezone, "H"),
+      );
+      return Math.min(min, hour);
+    }, 23);
+    return earliest;
+  }
+
+  if (dateParam === getTodayCalendarDate(displayTimezone)) {
+    const currentHour = Number(formatInTimeZone(new Date(), displayTimezone, "H"));
+    return Math.max(WAKING_START_HOUR, currentHour);
+  }
+
+  return WAKING_START_HOUR;
+}
+
 export function DayTimeline({
   date,
   events,
@@ -40,6 +70,8 @@ export function DayTimeline({
   writableCalendarIds,
 }: DayTimelineProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const dateParam = formatCalendarDate(date, displayTimezone);
@@ -51,18 +83,23 @@ export function DayTimeline({
       return;
     }
 
-    const isToday = dateParam === getTodayCalendarDate(displayTimezone);
-    const scrollTargetHour = isToday
-      ? Number(formatInTimeZone(new Date(), displayTimezone, "H"))
-      : DEFAULT_SCROLL_HOUR;
+    const scrollTargetHour = getScrollTargetHour(events, displayTimezone, dateParam);
 
     main.scrollTop = Math.max(
       0,
       TIMELINE_EDGE_PADDING_PX +
         (scrollTargetHour - TIMELINE_DAY_START_HOUR) * PX_PER_HOUR -
-        PX_PER_HOUR,
+        SCROLL_PADDING_PX,
     );
-  }, [dateParam, displayTimezone]);
+
+    function handleWheel(event: WheelEvent) {
+      event.preventDefault();
+      main!.scrollTop += event.deltaY * WHEEL_DAMPENING;
+    }
+
+    main.addEventListener("wheel", handleWheel, { passive: false });
+    return () => main.removeEventListener("wheel", handleWheel);
+  }, [dateParam, displayTimezone, events]);
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {
     if (dragActive) {
@@ -76,10 +113,18 @@ export function DayTimeline({
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    router.push(`/events/new?date=${dateParam}&startTime=${startTime}`);
+    const returnTo = buildReturnTo(pathname, searchParams.toString());
+    router.push(
+      `/events/new?date=${dateParam}&startTime=${startTime}&returnTo=${returnTo}`,
+    );
   }
 
-  const timedEvents = events.filter((event) => !event.isAllDay);
+  const timedEvents = events.filter((event) => {
+    if (event.isAllDay) {
+      return false;
+    }
+    return getEventSegmentForDay(event, dateParam, displayTimezone) !== null;
+  });
   const writableSet = new Set(writableCalendarIds);
 
   return (
@@ -136,6 +181,7 @@ export function DayTimeline({
             >
               <DraggableEventBlock
                 event={event}
+                dateParam={dateParam}
                 displayTimezone={displayTimezone}
                 editHref={`/events/${event.masterEventId}?date=${dateParam}`}
                 canEdit={writableSet.has(event.calendarId)}

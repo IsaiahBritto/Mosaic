@@ -5,10 +5,16 @@ import {
   buildDefaultEventFormValues,
   getWritableCalendarOptions,
 } from "@/lib/services/event.service";
+import { sanitizeReturnTo } from "@/lib/navigation/return-to";
 import { EventForm } from "@/components/events/EventForm";
 
 type NewEventPageProps = {
-  searchParams: Promise<{ date?: string; calendarId?: string; startTime?: string }>;
+  searchParams: Promise<{
+    date?: string;
+    calendarId?: string;
+    startTime?: string;
+    returnTo?: string;
+  }>;
 };
 
 export default async function NewEventPage({ searchParams }: NewEventPageProps) {
@@ -47,7 +53,8 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
     startTime: params.startTime,
   });
 
-  const exitHref = withDateParam("/day", selectedDate);
+  const exitHref =
+    sanitizeReturnTo(params.returnTo) ?? withDateParam("/week", selectedDate);
 
   return (
     <EventForm

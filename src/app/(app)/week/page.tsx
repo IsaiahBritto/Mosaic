@@ -9,11 +9,11 @@ import {
 import { DayAgenda } from "@/components/calendar/DayAgenda";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 
-type DayPageProps = {
+type WeekPageProps = {
   searchParams: Promise<{ date?: string; view?: string }>;
 };
 
-export default async function DayPage({ searchParams }: DayPageProps) {
+export default async function WeekPage({ searchParams }: WeekPageProps) {
   const params = await searchParams;
 
   const supabase = await createClient();

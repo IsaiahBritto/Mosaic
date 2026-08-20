@@ -219,6 +219,18 @@ export function formatDayHeading(dateParam: string, timezone: string): string {
   return `${weekday} the ${formatOrdinalDay(day)}`;
 }
 
+/** "WEDNESDAY" in display timezone. */
+export function formatWeekdayHeading(dateParam: string, timezone: string): string {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  return formatInTimeZone(anchor, timezone, "EEEE").toUpperCase();
+}
+
+/** "August 19, 2026" in display timezone. */
+export function formatFullDateHeading(dateParam: string, timezone: string): string {
+  const anchor = parseCalendarDateParam(dateParam, timezone);
+  return formatInTimeZone(anchor, timezone, "MMMM d, yyyy");
+}
+
 /** "AUGUST 2026" in display timezone. */
 export function formatMonthYearHeading(dateParam: string, timezone: string): string {
   return formatInTimeZone(

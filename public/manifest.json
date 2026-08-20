@@ -2,7 +2,7 @@
   "name": "Mosaic",
   "short_name": "Mosaic",
   "description": "Your shared calendar",
-  "start_url": "/day",
+  "start_url": "/month",
   "display": "standalone",
   "background_color": "#1A1A1A",
   "theme_color": "#1A1A1A",
