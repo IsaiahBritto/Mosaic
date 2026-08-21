@@ -39,7 +39,7 @@ export function MosaicBrand({ dateParam, embedded = false }: MosaicBrandProps) {
           <span
             key={`${letter}-${index}`}
             className="text-2xl font-extrabold"
-            style={{ color: CALENDAR_PALETTE[index % CALENDAR_PALETTE.length] }}
+            style={{ color: CALENDAR_PALETTE[index+1 % CALENDAR_PALETTE.length] }}
           >
             {letter}
           </span>
