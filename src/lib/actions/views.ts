@@ -37,6 +37,34 @@ export async function getDisplayTimezoneFromPrefs(): Promise<string> {
   return data?.default_timezone ?? "America/New_York";
 }
 
+export async function getProfileDisplayName(): Promise<string> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return "Guest";
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.display_name?.trim()) {
+    return profile.display_name.trim();
+  }
+
+  const email = user.email ?? "";
+  if (email.includes("@")) {
+    return email.split("@")[0] ?? "User";
+  }
+
+  return "User";
+}
+
 export async function getWeekAvailability(
   dateParam?: string,
 ): Promise<Record<string, DayAvailability>> {
@@ -103,6 +131,74 @@ export async function getDayViewModeFromPrefs(): Promise<"timeline" | "agenda"> 
     .maybeSingle();
 
   return data?.day_view_mode === "agenda" ? "agenda" : "timeline";
+}
+
+export type ShellLayout = "nav_first" | "calendar_before_period" | "calendar_first";
+
+const SHELL_LAYOUTS: ShellLayout[] = [
+  "nav_first",
+  "calendar_before_period",
+  "calendar_first",
+];
+
+function parseShellLayout(value: string | null | undefined): ShellLayout {
+  if (value && SHELL_LAYOUTS.includes(value as ShellLayout)) {
+    return value as ShellLayout;
+  }
+  return "nav_first";
+}
+
+export async function getShellLayoutFromPrefs(): Promise<ShellLayout> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return "nav_first";
+  }
+
+  const { data } = await supabase
+    .from("user_preferences")
+    .select("shell_layout")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return parseShellLayout(data?.shell_layout);
+}
+
+export async function setShellLayout(
+  layout: ShellLayout,
+): Promise<ActionResult<null>> {
+  if (!SHELL_LAYOUTS.includes(layout)) {
+    return actionError("VALIDATION_ERROR", "Invalid shell layout");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({
+      shell_layout: layout,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  if (error) {
+    return actionError("UNKNOWN", error.message);
+  }
+
+  revalidatePath("/week");
+  revalidatePath("/month");
+  revalidatePath("/year");
+  return actionSuccess(null);
 }
 
 export type AvailabilityDisplayMode = "general" | "specific";

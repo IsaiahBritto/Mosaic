@@ -19,3 +19,14 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

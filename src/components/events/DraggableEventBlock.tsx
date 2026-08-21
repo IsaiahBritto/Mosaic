@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { rescheduleEvent } from "@/lib/actions/events";
 import {
   eventToPosition,
@@ -26,7 +26,10 @@ type DraggableEventBlockProps = {
   displayTimezone: string;
   editHref: string;
   canEdit: boolean;
+  isSelected: boolean;
   timelineRef: React.RefObject<HTMLElement | null>;
+  onSelect: () => void;
+  onDeselect: () => void;
   onDragActiveChange?: (active: boolean) => void;
 };
 
@@ -38,6 +41,29 @@ type PendingReschedule = {
 
 function isRecurringInstance(event: EventInstance): boolean {
   return Boolean(event.recurrence) || event.instanceId !== event.masterEventId;
+}
+
+function ResizeHandle({
+  edge,
+  style,
+  onPointerDown,
+}: {
+  edge: "top" | "bottom";
+  style?: React.CSSProperties;
+  onPointerDown: (event: React.PointerEvent) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "absolute inset-x-0 z-10 flex h-8 cursor-ns-resize items-center justify-center",
+        edge === "top" ? "top-0" : "bottom-0",
+      )}
+      style={{ ...style, touchAction: "none" }}
+      onPointerDown={onPointerDown}
+    >
+      <div className="h-1 w-8 rounded-full bg-background/70" />
+    </div>
+  );
 }
 
 function TimelineBlockBody({
@@ -95,7 +121,10 @@ export function DraggableEventBlock({
   displayTimezone,
   editHref,
   canEdit,
+  isSelected,
   timelineRef,
+  onSelect,
+  onDeselect,
   onDragActiveChange,
 }: DraggableEventBlockProps) {
   const router = useRouter();
@@ -104,7 +133,10 @@ export function DraggableEventBlock({
   const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
   const [pendingReschedule, setPendingReschedule] =
     useState<PendingReschedule | null>(null);
-  const lastClickTime = useRef(0);
+  const lastTapTime = useRef(0);
+  const wasSelectedOnPointerDown = useRef(false);
+  const suppressClickRef = useRef(false);
+  const pendingDeselectTimeout = useRef<number | null>(null);
 
   const {
     preview,
@@ -113,17 +145,32 @@ export function DraggableEventBlock({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
+    handleLostPointerCapture,
   } = useTimelineDrag({
     event,
     displayTimezone,
     dateParam,
     timelineRef,
+    isSelected,
+    onSelect,
   });
+
+  useEffect(() => {
+    onDragActiveChange?.(isDragging);
+  }, [isDragging, onDragActiveChange]);
+
+  useEffect(() => {
+    return () => clearPendingDeselect();
+  }, []);
 
   const position: EventPosition =
     preview ?? eventToPosition(event, displayTimezone, dateParam);
 
-  function submitReschedule(payload: PendingReschedule, scope: "single" | "series") {
+  function submitReschedule(
+    payload: PendingReschedule,
+    scope: "single" | "series",
+  ) {
     startTransition(async () => {
       const result = await rescheduleEvent({
         eventId: event.masterEventId,
@@ -140,12 +187,19 @@ export function DraggableEventBlock({
         return;
       }
 
+      onDeselect();
       router.refresh();
     });
   }
 
+  function clearPendingDeselect() {
+    if (pendingDeselectTimeout.current !== null) {
+      window.clearTimeout(pendingDeselectTimeout.current);
+      pendingDeselectTimeout.current = null;
+    }
+  }
+
   function handleDragComplete(payload: PendingReschedule | null) {
-    onDragActiveChange?.(false);
     if (!payload) {
       return;
     }
@@ -159,19 +213,45 @@ export function DraggableEventBlock({
     submitReschedule(payload, "single");
   }
 
-  function handleDoubleClick() {
-    if (didDragRef.current) {
+  function handlePointerUpComplete(pointerEvent: React.PointerEvent) {
+    const result = handlePointerUp(pointerEvent);
+
+    if (result.payload) {
+      clearPendingDeselect();
+      handleDragComplete(result.payload);
       return;
     }
-    router.push(editHref);
+
+    if (!result.tapped || result.mode !== "move") {
+      return;
+    }
+
+    if (!wasSelectedOnPointerDown.current) {
+      suppressClickRef.current = true;
+      lastTapTime.current = Date.now();
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTapTime.current < 350) {
+      clearPendingDeselect();
+      router.push(editHref);
+      lastTapTime.current = 0;
+      return;
+    }
+
+    lastTapTime.current = now;
+    clearPendingDeselect();
+    pendingDeselectTimeout.current = window.setTimeout(() => {
+      pendingDeselectTimeout.current = null;
+      onDeselect();
+    }, 350);
   }
 
   function handleClick() {
-    const now = Date.now();
-    if (now - lastClickTime.current < 350) {
-      handleDoubleClick();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
     }
-    lastClickTime.current = now;
   }
 
   const blockBody = <TimelineBlockBody event={event} position={position} />;
@@ -185,7 +265,7 @@ export function DraggableEventBlock({
           height: position.height,
           backgroundColor: event.calendarColor,
         }}
-        onDoubleClick={handleDoubleClick}
+        onClick={() => router.push(editHref)}
       >
         {blockBody}
       </div>
@@ -196,50 +276,53 @@ export function DraggableEventBlock({
     <>
       <div
         className={cn(
-          "absolute left-14 right-2 overflow-hidden rounded-lg text-xs shadow-md",
-          isDragging || isPending ? "opacity-90 ring-2 ring-accent/60" : "",
-          "cursor-grab active:cursor-grabbing",
+          "absolute left-14 right-2 overflow-hidden rounded-lg text-xs shadow-md transition-shadow",
+          isSelected && "z-10 scale-[1.02] shadow-lg ring-2 ring-accent",
+          isDragging || isPending ? "opacity-90" : "",
+          isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         )}
         style={{
           top: position.top,
           height: position.height,
           backgroundColor: event.calendarColor,
+          touchAction: isSelected ? "none" : "auto",
         }}
         onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
         onPointerMove={handlePointerMove}
-        onPointerUp={(pointerEvent) => {
-          const payload = handlePointerUp(pointerEvent);
-          handleDragComplete(payload);
-        }}
+        onPointerUp={handlePointerUpComplete}
+        onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={handleLostPointerCapture}
       >
-        <div
-          className="absolute inset-x-0 top-0 z-10 h-3 cursor-ns-resize"
-          style={{ top: position.travelBeforeHeight }}
-          onPointerDown={(pointerEvent) => {
-            onDragActiveChange?.(true);
-            handlePointerDown(pointerEvent, "resizeStart");
-          }}
-        />
+        {isSelected ? (
+          <ResizeHandle
+            edge="top"
+            style={{ top: position.travelBeforeHeight }}
+            onPointerDown={(pointerEvent) => {
+              handlePointerDown(pointerEvent, "resizeStart");
+            }}
+          />
+        ) : null}
 
         <div
           className="relative h-full"
           onPointerDown={(pointerEvent) => {
-            onDragActiveChange?.(true);
+            wasSelectedOnPointerDown.current = isSelected;
             handlePointerDown(pointerEvent, "move");
           }}
+          onPointerMove={handlePointerMove}
         >
           {blockBody}
         </div>
 
-        <div
-          className="absolute inset-x-0 bottom-0 z-10 h-3 cursor-ns-resize"
-          style={{ bottom: position.travelAfterHeight }}
-          onPointerDown={(pointerEvent) => {
-            onDragActiveChange?.(true);
-            handlePointerDown(pointerEvent, "resizeEnd");
-          }}
-        />
+        {isSelected ? (
+          <ResizeHandle
+            edge="bottom"
+            style={{ bottom: position.travelAfterHeight }}
+            onPointerDown={(pointerEvent) => {
+              handlePointerDown(pointerEvent, "resizeEnd");
+            }}
+          />
+        ) : null}
       </div>
 
       <RecurrenceScopeDialog

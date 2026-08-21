@@ -16,6 +16,10 @@ function fieldsToMinutes(hours: number, minutes: number): number {
   return Math.min(480, Math.max(0, hours * 60 + minutes));
 }
 
+function clampMinutes(value: number): number {
+  return Math.min(59, Math.max(0, value));
+}
+
 function DurationInput({
   label,
   totalMinutes,
@@ -49,10 +53,11 @@ function DurationInput({
           type="number"
           min={0}
           max={59}
-          step={15}
           value={minutes}
           onChange={(e) =>
-            onChange(fieldsToMinutes(hours, Number(e.target.value) || 0))
+            onChange(
+              fieldsToMinutes(hours, clampMinutes(Number(e.target.value) || 0)),
+            )
           }
           className="w-14 rounded-lg bg-surface px-2 py-2 text-sm text-text-primary outline-none ring-1 ring-transparent focus:ring-accent/50"
           aria-label={`${label} minutes`}

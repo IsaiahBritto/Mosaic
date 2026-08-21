@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { getWeekAvailability } from "@/lib/actions/views";
 import {
@@ -36,6 +37,7 @@ export function WeekStrip({
   selectedDate,
   displayTimezone,
 }: WeekStripProps) {
+  const searchParams = useSearchParams();
   const mode = useAvailabilityDisplayMode();
   const isSpecific = mode === "specific";
   const weekDateParams = getWeekCalendarDateParams(dateParam, displayTimezone);
@@ -59,10 +61,13 @@ export function WeekStrip({
           dayAvailability?.status === "partial" &&
           (dayAvailability.busyRatio ?? 0) > 0;
 
+        const dayLinkParams = new URLSearchParams(searchParams.toString());
+        dayLinkParams.set("date", weekDateParam);
+
         return (
           <Link
             key={weekDateParam}
-            href={`/week?date=${weekDateParam}`}
+            href={`/week?${dayLinkParams.toString()}`}
             className="flex flex-col items-center gap-1"
           >
             <span className="text-[10px] uppercase text-text-secondary">

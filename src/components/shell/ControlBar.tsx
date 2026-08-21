@@ -84,10 +84,10 @@ export function ControlBar({
 
       <Link
         href={newEventHref}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-lg text-accent ring-1 ring-accent/30"
+        className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-sm font-medium text-accent ring-1 ring-accent/30"
         aria-label="New event"
       >
-        +
+        + Event
       </Link>
     </div>
   );

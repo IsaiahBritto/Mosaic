@@ -16,33 +16,44 @@ const VIEWS = [
   { key: "year", label: "Year", path: "/year" },
 ] as const;
 
-export function ViewNav({ dateParam }: ViewNavProps) {
+type MosaicBrandProps = {
+  dateParam: string;
+  embedded?: boolean;
+};
+
+export function MosaicBrand({ dateParam, embedded = false }: MosaicBrandProps) {
   const pathname = usePathname();
   const isMosaic = pathname.startsWith("/mosaic");
 
   return (
-    <nav className="px-4 py-3 text-xs font-medium uppercase tracking-widest">
-      <div className="mb-2 flex justify-start">
-        <Link
-          href={withCalendarDateParam("/mosaic", dateParam)}
-          className={cn(
-            "inline-flex items-center gap-0.5 transition-opacity hover:opacity-90",
-            isMosaic ? "opacity-100" : "opacity-80",
-          )}
-          aria-label="View my mosaic"
-        >
-          {"Mosaic".split("").map((letter, index) => (
-            <span
-              key={`${letter}-${index}`}
-              className="text-sm font-extrabold"
-              style={{ color: CALENDAR_PALETTE[index % CALENDAR_PALETTE.length] }}
-            >
-              {letter}
-            </span>
-          ))}
-        </Link>
-      </div>
+    <div className={cn("flex justify-center", !embedded && "px-4 py-3")}>
+      <Link
+        href={withCalendarDateParam("/mosaic", dateParam)}
+        className={cn(
+          "inline-flex items-center gap-0.5 transition-opacity hover:opacity-90",
+          isMosaic ? "opacity-100" : "opacity-80",
+        )}
+        aria-label="View my mosaic"
+      >
+        {"Mosaic".split("").map((letter, index) => (
+          <span
+            key={`${letter}-${index}`}
+            className="text-2xl font-extrabold"
+            style={{ color: CALENDAR_PALETTE[index % CALENDAR_PALETTE.length] }}
+          >
+            {letter}
+          </span>
+        ))}
+      </Link>
+    </div>
+  );
+}
 
+export function ViewNavTabs({ dateParam }: ViewNavProps) {
+  const pathname = usePathname();
+
+  return (
+    <nav className="px-4 py-3 text-xs font-medium uppercase tracking-widest">
       <div className="grid grid-cols-3">
         {VIEWS.map((view) => {
           const isActive = pathname.startsWith(view.path);
@@ -64,5 +75,14 @@ export function ViewNav({ dateParam }: ViewNavProps) {
         })}
       </div>
     </nav>
+  );
+}
+
+export function ViewNav({ dateParam }: ViewNavProps) {
+  return (
+    <>
+      <MosaicBrand dateParam={dateParam} />
+      <ViewNavTabs dateParam={dateParam} />
+    </>
   );
 }

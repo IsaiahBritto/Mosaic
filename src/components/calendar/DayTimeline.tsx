@@ -74,10 +74,15 @@ export function DayTimeline({
   const searchParams = useSearchParams();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
+    null,
+  );
   const dateParam = formatCalendarDate(date, displayTimezone);
   const hours = getTimelineHours();
 
   useEffect(() => {
+    setSelectedInstanceId(null);
+
     const main = timelineRef.current?.closest("main");
     if (!main) {
       return;
@@ -103,6 +108,11 @@ export function DayTimeline({
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {
     if (dragActive) {
+      return;
+    }
+
+    if (selectedInstanceId !== null) {
+      setSelectedInstanceId(null);
       return;
     }
 
@@ -175,6 +185,9 @@ export function DayTimeline({
           {timedEvents.map((event) => (
             <div
               key={event.instanceId}
+              className={
+                selectedInstanceId === event.instanceId ? "relative z-10" : ""
+              }
               onClick={(e) => e.stopPropagation()}
               onKeyDown={() => {}}
               role="presentation"
@@ -185,7 +198,10 @@ export function DayTimeline({
                 displayTimezone={displayTimezone}
                 editHref={`/events/${event.masterEventId}?date=${dateParam}`}
                 canEdit={writableSet.has(event.calendarId)}
+                isSelected={selectedInstanceId === event.instanceId}
                 timelineRef={timelineRef}
+                onSelect={() => setSelectedInstanceId(event.instanceId)}
+                onDeselect={() => setSelectedInstanceId(null)}
                 onDragActiveChange={setDragActive}
               />
             </div>

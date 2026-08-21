@@ -5,13 +5,18 @@ import { PendingInvitesSection } from "@/components/sharing/PendingInvitesSectio
 import {
   getAvailabilityDisplayModeFromPrefs,
   getDisplayTimezoneFromPrefs,
+  getProfileDisplayName,
+  getShellLayoutFromPrefs,
 } from "@/lib/actions/views";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [displayTimezone, availabilityDisplayMode] = await Promise.all([
-    getDisplayTimezoneFromPrefs(),
-    getAvailabilityDisplayModeFromPrefs(),
-  ]);
+  const [displayTimezone, availabilityDisplayMode, shellLayout, displayName] =
+    await Promise.all([
+      getDisplayTimezoneFromPrefs(),
+      getAvailabilityDisplayModeFromPrefs(),
+      getShellLayoutFromPrefs(),
+      getProfileDisplayName(),
+    ]);
 
   return (
     <ToastProvider>
@@ -21,6 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppLayoutClient
         displayTimezone={displayTimezone}
         availabilityDisplayMode={availabilityDisplayMode}
+        shellLayout={shellLayout}
+        displayName={displayName}
       >
         {children}
       </AppLayoutClient>

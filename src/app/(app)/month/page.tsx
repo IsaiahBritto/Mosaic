@@ -4,6 +4,7 @@ import { getCalendarsPageData } from "@/lib/services/calendar.service";
 import { MonthCalendarSection } from "@/components/calendar/MonthCalendarSection";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { MonthDayEventsPanel } from "@/components/calendar/MonthDayEventsPanel";
+import { MonthViewShell } from "@/components/shell/MonthViewShell";
 import {
   computeRangeAvailability,
   getMonthGridDates,
@@ -69,31 +70,38 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
       : [];
 
   return (
-    <div className="flex flex-1 flex-col">
-      {hasVisibleCalendars ? (
-        <>
+    <MonthViewShell
+      dateParam={dateParam}
+      displayTimezone={timezone}
+      calendar={
+        hasVisibleCalendars ? (
           <MonthGrid
             monthDateParam={dateParam}
             selectedDateParam={selectedDateParam}
             availabilityMap={availabilityMap}
             timezone={timezone}
           />
-          {selectedDateParam !== undefined ? (
-            <MonthDayEventsPanel
-              dateParam={selectedDateParam}
-              timezone={timezone}
-              events={selectedDayEvents}
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      <MonthCalendarSection
-        groups={groups}
-        visibleIds={visibleIds}
-        selectedDate={selectedDate}
-        showEmptyHint={!hasVisibleCalendars}
-      />
-    </div>
+        ) : null
+      }
+      calendars={
+        <MonthCalendarSection
+          groups={groups}
+          visibleIds={visibleIds}
+          selectedDate={selectedDate}
+          showEmptyHint={!hasVisibleCalendars}
+          variant="month"
+          displayTimezone={timezone}
+        />
+      }
+      events={
+        selectedDateParam !== undefined ? (
+          <MonthDayEventsPanel
+            dateParam={selectedDateParam}
+            timezone={timezone}
+            events={selectedDayEvents}
+          />
+        ) : null
+      }
+    />
   );
 }

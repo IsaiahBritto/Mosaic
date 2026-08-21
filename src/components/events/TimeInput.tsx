@@ -1,10 +1,34 @@
 import { cn } from "@/lib/utils/cn";
 
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
-  const hours = String(Math.floor(index / 2)).padStart(2, "0");
-  const minutes = index % 2 === 0 ? "00" : "30";
-  return `${hours}:${minutes}`;
-});
+export const TIME_INTERVAL_MINUTES = 15;
+
+const TIME_OPTIONS = Array.from(
+  { length: (24 * 60) / TIME_INTERVAL_MINUTES },
+  (_, index) => {
+    const totalMinutes = index * TIME_INTERVAL_MINUTES;
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+    const minutes = String(totalMinutes % 60).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  },
+);
+
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function getTimeOptions(minTime?: string): string[] {
+  if (!minTime) {
+    return TIME_OPTIONS;
+  }
+
+  const minMinutes = timeToMinutes(minTime);
+  return TIME_OPTIONS.filter((time) => timeToMinutes(time) > minMinutes);
+}
+
+export function getNextTimeSlot(time: string): string | undefined {
+  return getTimeOptions(time)[0];
+}
 
 type TimeInputProps = {
   label?: string;
@@ -13,6 +37,7 @@ type TimeInputProps = {
   error?: string;
   className?: string;
   disabled?: boolean;
+  minTime?: string;
 };
 
 export function TimeInput({
@@ -22,11 +47,13 @@ export function TimeInput({
   error,
   className,
   disabled,
+  minTime,
 }: TimeInputProps) {
   const inputId = label?.toLowerCase().replace(/\s+/g, "-");
+  const options = getTimeOptions(minTime);
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       {label ? (
         <label htmlFor={inputId} className="text-xs uppercase tracking-wide text-text-secondary">
           {label}
@@ -38,14 +65,14 @@ export function TimeInput({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className={cn(
-          "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text-primary",
+          "w-full min-w-0 rounded-lg bg-surface px-3 py-2.5 text-sm text-text-primary",
           "outline-none ring-1 ring-transparent focus:ring-accent/50",
           error && "ring-status-busy/50",
           disabled && "opacity-50",
         )}
       >
         <option value="">Select time</option>
-        {TIME_OPTIONS.map((time) => (
+        {options.map((time) => (
           <option key={time} value={time}>
             {formatTimeLabel(time)}
           </option>

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { DateInput } from "@/components/events/DateInput";
-import { TimeInput } from "@/components/events/TimeInput";
+import { getNextTimeSlot, TimeInput } from "@/components/events/TimeInput";
 import { TimezoneSelect } from "@/components/events/TimezoneSelect";
 import { RecurrenceFields } from "@/components/events/RecurrenceFields";
 import { TravelTimeFields } from "@/components/events/TravelTimeFields";
@@ -66,14 +66,33 @@ export function EventForm({
   const isAllDay = watch("isAllDay");
   const calendarId = watch("calendarId");
   const recurrence = watch("recurrence");
+  const startDate = watch("startDate");
+  const endDate = watch("endDate");
+  const startTime = watch("startTime");
+  const endTime = watch("endTime");
   const travelBeforeMinutes = watch("travelBeforeMinutes");
   const travelAfterMinutes = watch("travelAfterMinutes");
+
+  const isSameDay = startDate === endDate;
 
   useEffect(() => {
     if (!calendarId && calendars[0]) {
       setValue("calendarId", calendars[0].id);
     }
   }, [calendarId, calendars, setValue]);
+
+  useEffect(() => {
+    if (isAllDay || !isSameDay || !startTime || !endTime) {
+      return;
+    }
+
+    if (endTime <= startTime) {
+      const nextEndTime = getNextTimeSlot(startTime);
+      if (nextEndTime) {
+        setValue("endTime", nextEndTime, { shouldValidate: true });
+      }
+    }
+  }, [endTime, isAllDay, isSameDay, setValue, startTime]);
 
   function handleExit() {
     if (isDirty && !window.confirm("Discard unsaved changes?")) {
@@ -122,7 +141,7 @@ export function EventForm({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <AppHeader
         title={headerTitle}
         exitHref={exitHref}
@@ -134,7 +153,7 @@ export function EventForm({
       <form
         id={FORM_ID}
         onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
+        className="flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-4 py-4"
       >
         <Input
           label="Event Name/Title"
@@ -160,34 +179,37 @@ export function EventForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
           {!isAllDay ? (
             <>
-              <div className="flex flex-col gap-3">
+              <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
                 <TimeInput
                   label="Start Time"
-                  value={watch("startTime")}
+                  value={startTime}
                   onChange={(value) =>
                     setValue("startTime", value, { shouldDirty: true, shouldValidate: true })
                   }
                   error={errors.startTime?.message ?? errors.endDate?.message}
                 />
                 <DateInput
+                  compact
                   label="Start Day"
                   {...register("startDate")}
                   error={errors.startDate?.message}
                 />
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
                 <TimeInput
                   label="End Time"
-                  value={watch("endTime")}
+                  value={endTime}
+                  minTime={isSameDay ? startTime : undefined}
                   onChange={(value) =>
                     setValue("endTime", value, { shouldDirty: true, shouldValidate: true })
                   }
                   error={errors.endTime?.message ?? errors.endDate?.message}
                 />
                 <DateInput
+                  compact
                   label="End Day"
                   {...register("endDate")}
                   error={errors.endDate?.message ?? errors.endTime?.message}
@@ -197,11 +219,13 @@ export function EventForm({
           ) : (
             <>
               <DateInput
+                compact
                 label="Start Day"
                 {...register("startDate")}
                 error={errors.startDate?.message}
               />
               <DateInput
+                compact
                 label="End Day"
                 {...register("endDate")}
                 error={errors.endDate?.message}
