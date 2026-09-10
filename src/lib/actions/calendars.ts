@@ -61,7 +61,6 @@ function isAuthError(
 export async function createCalendar(input: {
   name: string;
   colorHex: string;
-  inviteEmail?: string;
 }): Promise<ActionResult<Calendar>> {
   const parsed = createCalendarSchema.safeParse(input);
   if (!parsed.success) {
@@ -81,7 +80,6 @@ export async function createCalendar(input: {
       auth.userId,
       parsed.data.name,
       parsed.data.colorHex,
-      parsed.data.inviteEmail,
     );
     revalidateCalendarViews();
     return actionSuccess(calendar);

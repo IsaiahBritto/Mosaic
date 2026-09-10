@@ -11,22 +11,36 @@ import {
   removeMemberById,
 } from "@/lib/repositories/members.repository";
 import { fetchCalendarById } from "@/lib/repositories/calendars.repository";
+import { checkAreFriends } from "@/lib/repositories/friends.repository";
+import { getFriendEmailForSharing } from "@/lib/services/friends.service";
 import { requireCalendarRole } from "@/lib/services/permissions.service";
 
 export async function inviteToCalendarForUser(
   supabase: SupabaseClient,
   userId: string,
   calendarId: string,
-  email: string,
+  friendUserId: string,
   role: "editor" | "viewer" = "editor",
 ): Promise<{ token: string; inviteLink: string }> {
   await requireCalendarRole(supabase, userId, calendarId, "owner");
+
+  if (friendUserId === userId) {
+    throw new AppError("VALIDATION_ERROR", "You cannot share a calendar with yourself", 400);
+  }
+
+  const areFriends = await checkAreFriends(supabase, userId, friendUserId);
+  if (!areFriends) {
+    throw new AppError("FORBIDDEN", "You can only share calendars with friends", 403);
+  }
+
+  const email = await getFriendEmailForSharing(supabase, friendUserId);
 
   const invite = await insertPendingInvite(
     supabase,
     calendarId,
     email,
     role,
+    friendUserId,
   );
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -17,7 +17,6 @@ import { AppError } from "@/lib/errors";
 import type { Calendar, CalendarGroup } from "@/types/calendar";
 import { features } from "@/lib/config/features";
 import { requireCalendarRole } from "@/lib/services/permissions.service";
-import { inviteToCalendarForUser } from "@/lib/services/sharing.service";
 
 /** Group calendars for NATIVE / LINKED / SHARED sections in the UI. */
 export function groupCalendars(calendars: Calendar[]): CalendarGroup[] {
@@ -109,19 +108,8 @@ export async function createCalendarForUser(
   userId: string,
   name: string,
   colorHex: string,
-  inviteEmail?: string,
 ): Promise<Calendar> {
   const row = await insertCalendar(supabase, userId, name, colorHex);
-
-  if (inviteEmail?.trim()) {
-    await inviteToCalendarForUser(
-      supabase,
-      userId,
-      row.id,
-      inviteEmail.trim(),
-      "editor",
-    );
-  }
 
   return {
     id: row.id,

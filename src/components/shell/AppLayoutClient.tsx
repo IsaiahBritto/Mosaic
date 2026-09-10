@@ -25,12 +25,14 @@ type AppLayoutInnerProps = {
   children: React.ReactNode;
   displayTimezone: string;
   displayName: string;
+  notificationCount: number;
 };
 
 function AppLayoutInner({
   children,
   displayTimezone,
   displayName,
+  notificationCount,
 }: AppLayoutInnerProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -54,7 +56,11 @@ function AppLayoutInner({
   if (isWeek) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
-        <CalendarShellHeader dateParam={dateParam} displayName={displayName} />
+        <CalendarShellHeader
+          dateParam={dateParam}
+          displayName={displayName}
+          notificationCount={notificationCount}
+        />
         <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       </div>
     );
@@ -63,7 +69,11 @@ function AppLayoutInner({
   if (isMonth) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
-        <CalendarShellHeader dateParam={dateParam} displayName={displayName} />
+        <CalendarShellHeader
+          dateParam={dateParam}
+          displayName={displayName}
+          notificationCount={notificationCount}
+        />
         <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       </div>
     );
@@ -72,7 +82,11 @@ function AppLayoutInner({
   if (isYear) {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col">
-        <CalendarShellHeader dateParam={dateParam} displayName={displayName}>
+        <CalendarShellHeader
+          dateParam={dateParam}
+          displayName={displayName}
+          notificationCount={notificationCount}
+        >
           <CalendarViewNav
             dateParam={dateParam}
             displayTimezone={displayTimezone}
@@ -99,6 +113,7 @@ type AppLayoutClientProps = {
   availabilityDisplayMode: AvailabilityDisplayMode;
   shellLayout: ShellLayout;
   displayName: string;
+  notificationCount: number;
 };
 
 export function AppLayoutClient({
@@ -107,13 +122,18 @@ export function AppLayoutClient({
   availabilityDisplayMode,
   shellLayout,
   displayName,
+  notificationCount,
 }: AppLayoutClientProps) {
   return (
     <Suspense fallback={<div className="mx-auto min-h-full max-w-md bg-background" />}>
       <TimezoneSync />
       <ShellLayoutProvider initialLayout={shellLayout}>
         <AvailabilityDisplayProvider initialMode={availabilityDisplayMode}>
-          <AppLayoutInner displayTimezone={displayTimezone} displayName={displayName}>
+          <AppLayoutInner
+            displayTimezone={displayTimezone}
+            displayName={displayName}
+            notificationCount={notificationCount}
+          >
             {children}
           </AppLayoutInner>
         </AvailabilityDisplayProvider>

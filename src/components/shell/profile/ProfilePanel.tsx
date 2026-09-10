@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { LayoutSelector } from "@/components/shell/profile/LayoutSelector";
+import { FriendsSection } from "@/components/shell/profile/FriendsSection";
 
 type ProfilePanelProps = {
   open: boolean;
@@ -38,7 +39,7 @@ export function ProfilePanel({ open, onClose, displayName }: ProfilePanelProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-start">
       <button
         type="button"
         aria-label="Close profile"
@@ -68,6 +69,7 @@ export function ProfilePanel({ open, onClose, displayName }: ProfilePanelProps) 
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <LayoutSelector />
+          <FriendsSection active={open} />
         </div>
       </div>
     </div>

@@ -2,11 +2,13 @@
 
 import { MosaicBrand } from "@/components/shell/ViewNav";
 import { ProfileButton } from "@/components/shell/profile/ProfileButton";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { cn } from "@/lib/utils/cn";
 
 type CalendarShellHeaderProps = {
   dateParam: string;
   displayName: string;
+  notificationCount: number;
   sticky?: boolean;
   children?: React.ReactNode;
   className?: string;
@@ -15,6 +17,7 @@ type CalendarShellHeaderProps = {
 export function CalendarShellHeader({
   dateParam,
   displayName,
+  notificationCount,
   sticky = false,
   children,
   className,
@@ -27,12 +30,12 @@ export function CalendarShellHeader({
         className,
       )}
     >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3">
-        <div className="justify-self-start">
-          <ProfileButton displayName={displayName} />
+      <div className="relative flex w-full items-center justify-between px-4 py-3">
+        <ProfileButton displayName={displayName} className="relative z-10" />
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center [&_a]:pointer-events-auto">
+          <MosaicBrand dateParam={dateParam} embedded />
         </div>
-        <MosaicBrand dateParam={dateParam} embedded />
-        <div aria-hidden />
+        <NotificationBell count={notificationCount} className="relative z-10" />
       </div>
       {children}
     </header>

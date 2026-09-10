@@ -9,6 +9,7 @@ import {
   updateCalendarDisplay,
 } from "@/lib/actions/calendars";
 import { leaveCalendar } from "@/lib/actions/sharing";
+import { ShareWithFriendSection } from "@/components/calendar/ShareWithFriendSection";
 import { ColorPicker } from "@/components/calendar/ColorPicker";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -35,6 +36,10 @@ function canDelete(calendar: Calendar): boolean {
 
 function canLeave(calendar: Calendar): boolean {
   return calendar.role !== "owner";
+}
+
+function canShare(calendar: Calendar): boolean {
+  return calendar.role === "owner" && calendar.source === "native";
 }
 
 export function EditCalendarDialog({
@@ -163,6 +168,10 @@ export function EditCalendarDialog({
           />
           <ColorPicker value={colorHex} onChange={setColorHex} />
         </div>
+
+        {canShare(calendar) ? (
+          <ShareWithFriendSection calendarId={calendar.id} />
+        ) : null}
 
         {showScopeChoice ? (
           <fieldset className="mb-4 space-y-2">

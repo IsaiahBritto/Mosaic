@@ -26,6 +26,7 @@ import {
 } from "@/lib/validation/sharing";
 
 function revalidateSharingViews() {
+  revalidatePath("/", "layout");
   revalidatePath("/calendars");
   revalidatePath("/month");
   revalidatePath("/week");
@@ -34,7 +35,7 @@ function revalidateSharingViews() {
 
 export async function inviteToCalendar(input: {
   calendarId: string;
-  email: string;
+  friendUserId: string;
   role?: "editor" | "viewer";
 }): Promise<ActionResult<{ inviteLink: string; token: string }>> {
   const parsed = inviteToCalendarSchema.safeParse(input);
@@ -56,7 +57,7 @@ export async function inviteToCalendar(input: {
       supabase,
       user.id,
       parsed.data.calendarId,
-      parsed.data.email,
+      parsed.data.friendUserId,
       parsed.data.role,
     );
     revalidateSharingViews();
@@ -156,7 +157,15 @@ export async function getPendingInvites(): Promise<
   );
 }
 
-export async function getSentInvites(calendarId: string) {
+export async function getSentInvites(calendarId: string): Promise<
+  ActionResult<
+    Array<{
+      id: string;
+      invited_email: string | null;
+      role: string;
+    }>
+  >
+> {
   const supabase = await createClient();
   const {
     data: { user },

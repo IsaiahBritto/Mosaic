@@ -15,7 +15,6 @@ export function NewCalendarForm() {
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
   const [colorHex, setColorHex] = useState<string>(DEFAULT_CALENDAR_COLOR);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +26,6 @@ export function NewCalendarForm() {
       const result = await createCalendar({
         name,
         colorHex,
-        inviteEmail: inviteEmail || undefined,
       });
 
       if (!result.success) {
@@ -38,7 +36,6 @@ export function NewCalendarForm() {
 
       showToast(`Created "${result.data.name}"`);
       setName("");
-      setInviteEmail("");
       setColorHex(DEFAULT_CALENDAR_COLOR);
       router.refresh();
     });
@@ -54,13 +51,6 @@ export function NewCalendarForm() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Dance"
             required
-          />
-          <Input
-            label="Invite to share: Email"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="email@example.com"
-            type="email"
           />
           <span className="text-xs text-text-secondary">{colorHex}</span>
         </div>

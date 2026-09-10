@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const inviteToCalendarSchema = z.object({
   calendarId: z.string().uuid(),
-  email: z.string().email(),
+  friendUserId: z.string().uuid(),
   role: z.enum(["editor", "viewer"]).default("editor"),
 });
 

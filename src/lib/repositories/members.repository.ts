@@ -17,6 +17,7 @@ export async function insertPendingInvite(
   calendarId: string,
   email: string,
   role: "editor" | "viewer",
+  friendUserId?: string | null,
 ): Promise<CalendarMemberRow> {
   const { data, error } = await supabase
     .from("calendar_members")
@@ -25,7 +26,7 @@ export async function insertPendingInvite(
       invited_email: email.toLowerCase(),
       role,
       invite_status: "pending",
-      user_id: null,
+      user_id: friendUserId ?? null,
     })
     .select("*")
     .single();
