@@ -60,6 +60,9 @@ export function DayTimeline({
       return;
     }
 
+    const scrollEl: HTMLElement = scrollContainer;
+    const timelineEl: HTMLDivElement = timeline;
+
     const targetMinutes = getTimelineScrollTargetMinutes(
       events,
       displayTimezone,
@@ -68,8 +71,8 @@ export function DayTimeline({
 
     const frameId = requestAnimationFrame(() => {
       scrollTimelineToMinutes(
-        scrollContainer,
-        timeline,
+        scrollEl,
+        timelineEl,
         targetMinutes,
         SCROLL_PADDING_PX,
       );
@@ -77,13 +80,13 @@ export function DayTimeline({
 
     function handleWheel(event: WheelEvent) {
       event.preventDefault();
-      scrollContainer.scrollTop += event.deltaY * WHEEL_DAMPENING;
+      scrollEl.scrollTop += event.deltaY * WHEEL_DAMPENING;
     }
 
-    scrollContainer.addEventListener("wheel", handleWheel, { passive: false });
+    scrollEl.addEventListener("wheel", handleWheel, { passive: false });
     return () => {
       cancelAnimationFrame(frameId);
-      scrollContainer.removeEventListener("wheel", handleWheel);
+      scrollEl.removeEventListener("wheel", handleWheel);
     };
   }, [dateParam, displayTimezone, events]);
 
