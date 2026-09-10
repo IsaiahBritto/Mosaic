@@ -9,58 +9,47 @@ import {
   updateCalendarById,
   updateVisibleCalendarIds,
 } from "@/lib/repositories/calendars.repository";
+import {
+  clearMemberDisplayOverrides,
+  updateMemberDisplayOverrides,
+} from "@/lib/repositories/members.repository";
 import { AppError } from "@/lib/errors";
 import type { Calendar, CalendarGroup } from "@/types/calendar";
 import { features } from "@/lib/config/features";
+import { requireCalendarRole } from "@/lib/services/permissions.service";
 import { inviteToCalendarForUser } from "@/lib/services/sharing.service";
 
-/** Group calendars for NATIVE / SHARED / LINKED sections in the UI. */
+/** Group calendars for NATIVE / LINKED / SHARED sections in the UI. */
 export function groupCalendars(calendars: Calendar[]): CalendarGroup[] {
   const native = calendars.filter(
-    (c) => c.type === "native" && c.role === "owner",
+    (c) =>
+      c.source === "native" &&
+      c.type === "native" &&
+      c.role === "owner",
+  );
+
+  const linked = calendars.filter(
+    (c) => c.source === "google" || c.source === "apple",
   );
 
   const shared = calendars.filter(
-    (c) => c.type === "shared" || c.role !== "owner",
+    (c) =>
+      c.source === "native" &&
+      (c.type === "shared" || c.role !== "owner"),
   );
 
-  const groups: CalendarGroup[] = [
-    {
-      label: "NATIVE",
-      title: "Native",
-      calendars: native,
-    },
-    {
-      label: "SHARED",
-      title: "Shared",
-      calendars: shared,
-      emptyMessage:
-        shared.length === 0 ? "No shared calendars yet" : undefined,
-    },
+  const candidates: CalendarGroup[] = [
+    { label: "NATIVE", title: "Native", calendars: native },
+    { label: "LINKED", title: "Linked", calendars: linked },
+    { label: "SHARED", title: "Shared", calendars: shared },
   ];
 
-  if (features.linkedGoogleCalendars) {
-    groups.push({
-      label: "LINKED",
-      title: "Linked: Google",
-      calendars: [],
-      emptyMessage: "Connect Google in Calendars settings",
-    });
-  }
-
-  if (features.linkedAppleCalendars) {
-    groups.push({
-      label: "LINKED",
-      title: "Linked: i-Cloud",
-      calendars: [],
-      emptyMessage: "Connect iCloud in Calendars settings",
-    });
-  }
+  const groups = candidates.filter((group) => group.calendars.length > 0);
 
   if (features.showLinkedCalendarStubs) {
     groups.push({
       label: "LINKED",
-      title: "Linked: i-Cloud",
+      title: "Linked",
       calendars: [],
       disabled: true,
       emptyMessage: "Coming soon",
@@ -70,14 +59,16 @@ export function groupCalendars(calendars: Calendar[]): CalendarGroup[] {
   return groups;
 }
 
-/** Resolve visible calendar IDs; empty preference means all calendars visible. */
+/** Flatten grouped calendars in display order (Native → Linked → Shared). */
+export function orderCalendarsForDisplay(groups: CalendarGroup[]): Calendar[] {
+  return groups.filter((group) => !group.disabled).flatMap((group) => group.calendars);
+}
+
+/** Resolve visible calendar IDs; empty array means none visible. */
 export function resolveVisibleIds(
   calendars: Calendar[],
   storedVisibleIds: string[],
 ): string[] {
-  if (storedVisibleIds.length === 0) {
-    return calendars.map((c) => c.id);
-  }
   return storedVisibleIds.filter((id) => calendars.some((c) => c.id === id));
 }
 
@@ -85,12 +76,9 @@ export function applyVisibilityToCalendars(
   calendars: Calendar[],
   visibleIds: string[],
 ): Calendar[] {
-  const effectiveVisible =
-    visibleIds.length === 0 ? calendars.map((c) => c.id) : visibleIds;
-
   return calendars.map((calendar) => ({
     ...calendar,
-    isVisible: effectiveVisible.includes(calendar.id),
+    isVisible: visibleIds.includes(calendar.id),
   }));
 }
 
@@ -140,6 +128,7 @@ export async function createCalendarForUser(
     name: row.name,
     colorHex: row.color_hex,
     type: row.type,
+    source: "native",
     ownerId: row.owner_id,
     isVisible: true,
     role: "owner",
@@ -159,6 +148,54 @@ export async function updateCalendarForUser(
   await updateCalendarById(supabase, calendarId, updates);
 }
 
+export async function updateCalendarDisplayForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  calendarId: string,
+  updates: {
+    name?: string;
+    colorHex?: string;
+    scope: "global" | "personal";
+  },
+): Promise<void> {
+  const calendar = await fetchCalendarById(supabase, calendarId);
+  if (!calendar) {
+    throw new AppError("NOT_FOUND", "Calendar not found", 404);
+  }
+
+  if (updates.scope === "personal") {
+    await requireCalendarRole(supabase, userId, calendarId, "viewer");
+    await updateMemberDisplayOverrides(supabase, userId, calendarId, {
+      name: updates.name,
+      colorHex: updates.colorHex,
+    });
+    return;
+  }
+
+  if (calendar.owner_id === userId) {
+    await updateCalendarById(supabase, calendarId, {
+      name: updates.name,
+      colorHex: updates.colorHex,
+    });
+    return;
+  }
+
+  await requireCalendarRole(supabase, userId, calendarId, "editor");
+  await updateCalendarById(supabase, calendarId, {
+    name: updates.name,
+    colorHex: updates.colorHex,
+  });
+}
+
+export async function revertCalendarDisplayForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  calendarId: string,
+): Promise<void> {
+  await requireCalendarRole(supabase, userId, calendarId, "viewer");
+  await clearMemberDisplayOverrides(supabase, userId, calendarId);
+}
+
 export async function deleteCalendarForUser(
   supabase: SupabaseClient,
   userId: string,
@@ -167,6 +204,14 @@ export async function deleteCalendarForUser(
   const calendar = await fetchCalendarById(supabase, calendarId);
   if (!calendar || calendar.owner_id !== userId) {
     throw new AppError("FORBIDDEN", "You cannot delete this calendar", 403);
+  }
+
+  if (calendar.source !== "native") {
+    throw new AppError(
+      "FORBIDDEN",
+      "Linked calendars are removed when you disconnect the account",
+      403,
+    );
   }
 
   const ownedCount = await countOwnedCalendars(supabase, userId);

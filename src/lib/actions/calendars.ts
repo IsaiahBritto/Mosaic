@@ -14,6 +14,8 @@ import {
   saveVisibleCalendarIds,
   setAllCalendarsVisibility,
   setSingleCalendarVisibility,
+  revertCalendarDisplayForUser,
+  updateCalendarDisplayForUser,
   updateCalendarForUser,
 } from "@/lib/services/calendar.service";
 import type { Calendar } from "@/types/calendar";
@@ -23,6 +25,8 @@ import {
   saveCalendarPreferencesSchema,
   setAllCalendarsVisibilitySchema,
   setCalendarVisibilitySchema,
+  revertCalendarDisplaySchema,
+  updateCalendarDisplaySchema,
   updateCalendarSchema,
 } from "@/lib/validation/calendar";
 
@@ -120,6 +124,82 @@ export async function updateCalendar(input: {
     return actionError(
       "UNKNOWN",
       error instanceof Error ? error.message : "Failed to update calendar",
+    );
+  }
+}
+
+export async function updateCalendarDisplay(input: {
+  id: string;
+  name?: string;
+  colorHex?: string;
+  scope: "global" | "personal";
+}): Promise<ActionResult<null>> {
+  const parsed = updateCalendarDisplaySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Invalid input",
+    );
+  }
+
+  const auth = await getUserIdOrError();
+  if (isAuthError(auth)) return auth;
+
+  try {
+    const supabase = await createClient();
+    await updateCalendarDisplayForUser(
+      supabase,
+      auth.userId,
+      parsed.data.id,
+      {
+        name: parsed.data.name,
+        colorHex: parsed.data.colorHex,
+        scope: parsed.data.scope,
+      },
+    );
+    revalidateCalendarViews();
+    return actionSuccess(null);
+  } catch (error) {
+    if (isAppError(error)) {
+      return actionError(error.code, error.message);
+    }
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Failed to update calendar",
+    );
+  }
+}
+
+export async function revertCalendarDisplay(input: {
+  id: string;
+}): Promise<ActionResult<null>> {
+  const parsed = revertCalendarDisplaySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Invalid input",
+    );
+  }
+
+  const auth = await getUserIdOrError();
+  if (isAuthError(auth)) return auth;
+
+  try {
+    const supabase = await createClient();
+    await revertCalendarDisplayForUser(
+      supabase,
+      auth.userId,
+      parsed.data.id,
+    );
+    revalidateCalendarViews();
+    return actionSuccess(null);
+  } catch (error) {
+    if (isAppError(error)) {
+      return actionError(error.code, error.message);
+    }
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Failed to revert calendar",
     );
   }
 }

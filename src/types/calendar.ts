@@ -1,17 +1,29 @@
 export type CalendarRole = "owner" | "editor" | "viewer";
 export type CalendarType = "native" | "shared";
+export type CalendarSource = "native" | "google" | "apple";
 
 export type Calendar = {
   id: string;
   name: string;
   colorHex: string;
   type: CalendarType;
+  source: CalendarSource;
   ownerId: string;
   isVisible: boolean;
   role: CalendarRole;
+  connectionId?: string | null;
+  readOnly?: boolean;
+  canonicalName?: string;
+  canonicalColorHex?: string;
+  hasPersonalOverride?: boolean;
 };
 
-export type CalendarGroupLabel = "NATIVE" | "SHARED" | "LINKED";
+export type CalendarGroupLabel =
+  | "NATIVE"
+  | "SHARED"
+  | "LINKED"
+  | "LINKED_GOOGLE"
+  | "LINKED_APPLE";
 
 export type CalendarGroup = {
   label: CalendarGroupLabel;

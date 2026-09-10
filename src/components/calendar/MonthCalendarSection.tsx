@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { CalendarGroup } from "@/types/calendar";
+import type { Calendar, CalendarGroup } from "@/types/calendar";
+import { EditCalendarDialog } from "@/components/calendar/EditCalendarDialog";
 import { setCalendarVisibility } from "@/lib/actions/calendars";
 import { setDayViewMode } from "@/lib/actions/views";
 import { useAvailabilityDisplay } from "@/components/calendar/AvailabilityDisplayContext";
@@ -45,6 +46,7 @@ export function MonthCalendarSection({
   const [viewModePending, startViewModeTransition] = useTransition();
   const [collapsed, setCollapsed] = useState(false);
   const [collapsePrefReady, setCollapsePrefReady] = useState(false);
+  const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
   const dateParam = formatDateParam(selectedDate);
   const calendarDateParam =
     displayTimezone != null
@@ -144,6 +146,7 @@ export function MonthCalendarSection({
           groups={groups}
           visibleIds={visibleIds}
           onToggle={handleCalendarVisibilityToggle}
+          onEdit={setEditingCalendar}
           compact
           hideGroupHeaders
           showSharedBadge
@@ -153,6 +156,13 @@ export function MonthCalendarSection({
           <p className="text-center text-sm text-text-secondary">
             Select calendars to show
           </p>
+        ) : null}
+
+        {editingCalendar ? (
+          <EditCalendarDialog
+            calendar={editingCalendar}
+            onClose={() => setEditingCalendar(null)}
+          />
         ) : null}
 
         {isPending ? (

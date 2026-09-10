@@ -46,6 +46,28 @@ Mobile-first shared calendar app built with Next.js, Supabase, and Vercel.
 
 Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to sign in.
 
+### Linked calendars (Google & iCloud)
+
+Enable feature flags in `.env.local`:
+
+```
+NEXT_PUBLIC_FEATURE_GOOGLE=true
+NEXT_PUBLIC_FEATURE_APPLE=true
+TOKEN_ENCRYPTION_KEY=<32+ char secret>
+```
+
+**Google Calendar** requires a one-time OAuth app in [Google Cloud Console](https://console.cloud.google.com/) with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Users connect via OAuth on the Calendars page.
+
+**iCloud Calendar** uses CalDAV with an app-specific password (not your main Apple ID password):
+
+1. Enable Two-Factor Authentication on your Apple ID
+2. Visit [appleid.apple.com](https://appleid.apple.com) → Sign-In and Security → App-Specific Passwords
+3. Generate a password labeled “Mosaic Calendar”
+4. On the Calendars page, enter your Apple ID email and the app-specific password
+5. Select which iCloud calendars to import
+
+Linked calendars sync in batch: daily at midnight America/New_York and manually via **Resync all calendars**. Edits queue until the next resync.
+
 ### Supabase Auth
 
 Enable **Email** provider under Authentication → Providers. Add redirect URL:

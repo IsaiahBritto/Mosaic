@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AppLayoutClient } from "@/components/shell/AppLayoutClient";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ConflictResolutionGate } from "@/components/integrations/ConflictResolutionGate";
 import { PendingInvitesSection } from "@/components/sharing/PendingInvitesSection";
 import {
   getAvailabilityDisplayModeFromPrefs,
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ToastProvider>
       <Suspense fallback={null}>
         <PendingInvitesSection />
+        <ConflictResolutionGate />
       </Suspense>
       <AppLayoutClient
         displayTimezone={displayTimezone}

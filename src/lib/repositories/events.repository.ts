@@ -76,6 +76,8 @@ const EVENT_SELECT = `
   travel_before_minutes,
   travel_after_minutes,
   is_holiday,
+  sync_status,
+  external_metadata,
   calendars (
     id,
     name,
@@ -88,6 +90,14 @@ const EVENT_SELECT = `
     end_date
   )
 `;
+
+function isVisibleEventRow(row: {
+  sync_status?: string | null;
+  external_metadata?: { pendingDelete?: boolean } | null;
+}): boolean {
+  if (row.sync_status === "conflict") return true;
+  return row.external_metadata?.pendingDelete !== true;
+}
 
 export async function fetchEventById(
   supabase: SupabaseClient,
@@ -152,12 +162,69 @@ export async function fetchEventsInRange(
     ...((overlapping ?? []) as unknown as EventRowJoin[]),
     ...((recurring ?? []) as unknown as EventRowJoin[]),
   ]) {
+    if (
+      !isVisibleEventRow(
+        row as EventRowJoin & {
+          sync_status?: string | null;
+          external_metadata?: { pendingDelete?: boolean } | null;
+        },
+      )
+    ) {
+      continue;
+    }
     byId.set(row.id, mapEventRow(row));
   }
 
   return Array.from(byId.values()).sort(
     (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
   );
+}
+
+export async function fetchConflictEventsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    calendar_id: string;
+    conflict_payload: unknown;
+    calendars: { name: string; source: string };
+  }>
+> {
+  const { data: memberships } = await supabase
+    .from("calendar_members")
+    .select("calendar_id")
+    .eq("user_id", userId)
+    .eq("invite_status", "accepted");
+
+  const calendarIds = (memberships ?? []).map((m) => m.calendar_id);
+  if (calendarIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, title, calendar_id, conflict_payload, calendars(name, source)")
+    .in("calendar_id", calendarIds)
+    .eq("sync_status", "conflict");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => {
+    const calRaw = (row as { calendars: unknown }).calendars;
+    const cal = (Array.isArray(calRaw) ? calRaw[0] : calRaw) as {
+      name: string;
+      source: string;
+    };
+    return {
+      id: (row as { id: string }).id,
+      title: (row as { title: string }).title,
+      calendar_id: (row as { calendar_id: string }).calendar_id,
+      conflict_payload: (row as { conflict_payload: unknown }).conflict_payload,
+      calendars: cal,
+    };
+  });
 }
 
 export type InsertEventPayload = {
@@ -175,9 +242,15 @@ export type InsertEventPayload = {
   isHoliday: boolean;
 };
 
+export type InsertEventOptions = {
+  source?: "native" | "google" | "apple";
+  syncStatus?: "synced" | "pending_push" | "conflict";
+};
+
 export async function insertEvent(
   supabase: SupabaseClient,
   payload: InsertEventPayload,
+  options?: InsertEventOptions,
 ): Promise<Event> {
   const { data, error } = await supabase
     .from("events")
@@ -194,6 +267,8 @@ export async function insertEvent(
       travel_before_minutes: payload.travelBeforeMinutes,
       travel_after_minutes: payload.travelAfterMinutes,
       is_holiday: payload.isHoliday,
+      source: options?.source ?? "native",
+      sync_status: options?.syncStatus ?? "synced",
     })
     .select(EVENT_SELECT)
     .single();
@@ -216,22 +291,30 @@ export async function updateEventById(
   supabase: SupabaseClient,
   eventId: string,
   payload: UpdateEventPayload,
+  options?: { syncStatus?: "synced" | "pending_push" | "conflict" },
 ): Promise<Event> {
+  const updatePayload: Record<string, unknown> = {
+    calendar_id: payload.calendarId,
+    title: payload.title,
+    location: payload.location,
+    notes: payload.notes,
+    start_at: payload.startAt,
+    end_at: payload.endAt,
+    is_all_day: payload.isAllDay,
+    timezone: payload.timezone,
+    travel_before_minutes: payload.travelBeforeMinutes,
+    travel_after_minutes: payload.travelAfterMinutes,
+    is_holiday: payload.isHoliday,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (options?.syncStatus) {
+    updatePayload.sync_status = options.syncStatus;
+  }
+
   const { data, error } = await supabase
     .from("events")
-    .update({
-      calendar_id: payload.calendarId,
-      title: payload.title,
-      location: payload.location,
-      notes: payload.notes,
-      start_at: payload.startAt,
-      end_at: payload.endAt,
-      is_all_day: payload.isAllDay,
-      timezone: payload.timezone,
-      travel_before_minutes: payload.travelBeforeMinutes,
-      travel_after_minutes: payload.travelAfterMinutes,
-      is_holiday: payload.isHoliday,
-    })
+    .update(updatePayload)
     .eq("id", eventId)
     .select(EVENT_SELECT)
     .single();
@@ -248,6 +331,24 @@ export async function deleteEventById(
   eventId: string,
 ): Promise<void> {
   const { error } = await supabase.from("events").delete().eq("id", eventId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function markEventPendingDelete(
+  supabase: SupabaseClient,
+  eventId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("events")
+    .update({
+      sync_status: "pending_push",
+      external_metadata: { pendingDelete: true },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", eventId);
 
   if (error) {
     throw new Error(error.message);
@@ -368,14 +469,20 @@ export async function updateEventTimesById(
   eventId: string,
   startAt: string,
   endAt: string,
+  options?: { syncStatus?: "pending_push" },
 ): Promise<Event> {
+  const payload: Record<string, string> = {
+    start_at: startAt,
+    end_at: endAt,
+    updated_at: new Date().toISOString(),
+  };
+  if (options?.syncStatus) {
+    payload.sync_status = options.syncStatus;
+  }
+
   const { data, error } = await supabase
     .from("events")
-    .update({
-      start_at: startAt,
-      end_at: endAt,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq("id", eventId)
     .select(EVENT_SELECT)
     .single();
@@ -410,7 +517,9 @@ export async function fetchEventCalendarRole(
 export async function fetchWritableCalendars(
   supabase: SupabaseClient,
   userId: string,
-): Promise<{ id: string; name: string; color_hex: string }[]> {
+): Promise<
+  { id: string; name: string; color_hex: string; source: string; read_only: boolean }[]
+> {
   const { data, error } = await supabase
     .from("calendar_members")
     .select(
@@ -419,7 +528,9 @@ export async function fetchWritableCalendars(
       calendars (
         id,
         name,
-        color_hex
+        color_hex,
+        source,
+        external_calendar_access_role
       )
     `,
     )
@@ -432,12 +543,28 @@ export async function fetchWritableCalendars(
   }
 
   type Row = {
-    calendars: { id: string; name: string; color_hex: string } | null;
+    calendars: {
+      id: string;
+      name: string;
+      color_hex: string;
+      source: string;
+      external_calendar_access_role: string | null;
+    } | null;
   };
 
   return ((data ?? []) as unknown as Row[])
     .map((row) => row.calendars)
-    .filter((cal): cal is { id: string; name: string; color_hex: string } =>
-      Boolean(cal),
-    );
+    .filter((cal): cal is NonNullable<Row["calendars"]> => Boolean(cal))
+    .filter(
+      (cal) =>
+        cal.external_calendar_access_role !== "reader" &&
+        cal.external_calendar_access_role !== "freeBusyReader",
+    )
+    .map((cal) => ({
+      id: cal.id,
+      name: cal.name,
+      color_hex: cal.color_hex,
+      source: cal.source ?? "native",
+      read_only: false,
+    }));
 }

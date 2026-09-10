@@ -44,4 +44,5 @@ export type WritableCalendarOption = {
   id: string;
   name: string;
   colorHex: string;
+  source?: "native" | "google" | "apple";
 };

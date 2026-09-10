@@ -2,16 +2,25 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { syncNow } from "@/lib/actions/integrations";
+import { resyncAllLinkedCalendars } from "@/lib/actions/integrations";
 import type { CalendarConnection } from "@/lib/integrations/types";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
 type SyncStatusBarProps = {
   connections: CalendarConnection[];
+  onSyncComplete?: (conflictCount: number) => void;
 };
 
-export function SyncStatusBar({ connections }: SyncStatusBarProps) {
+function formatLastSync(iso: string | null): string {
+  if (!iso) return "Never synced";
+  return `Last synced ${new Date(iso).toLocaleString()}`;
+}
+
+export function SyncStatusBar({
+  connections,
+  onSyncComplete,
+}: SyncStatusBarProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -22,12 +31,19 @@ export function SyncStatusBar({ connections }: SyncStatusBarProps) {
 
   function handleSync() {
     startTransition(async () => {
-      const result = await syncNow();
+      const result = await resyncAllLinkedCalendars();
       if (!result.success) {
         showToast(result.message, "error");
         return;
       }
-      showToast("Sync complete");
+
+      const { conflicts, pulled, pushed } = result.data;
+      if (conflicts.length > 0) {
+        showToast(`${conflicts.length} conflict(s) need your attention`, "error");
+        onSyncComplete?.(conflicts.length);
+      } else {
+        showToast(`Resync complete (${pulled} pulled, ${pushed} pushed)`);
+      }
       router.refresh();
     });
   }
@@ -39,12 +55,17 @@ export function SyncStatusBar({ connections }: SyncStatusBarProps) {
           {connections.map((connection) => (
             <p key={connection.id}>
               {connection.provider}: {connection.providerAccountEmail}{" "}
-              {connection.lastSyncStatus ? `(${connection.lastSyncStatus})` : ""}
+              {formatLastSync(connection.lastSyncAt)}
+              {connection.lastSyncStatus === "error" ? (
+                <span className="ml-1 text-red-400">
+                  ({connection.lastSyncError ?? "error"})
+                </span>
+              ) : null}
             </p>
           ))}
         </div>
         <Button size="sm" onClick={handleSync} disabled={isPending}>
-          {isPending ? "Syncing…" : "Sync Now"}
+          {isPending ? "Syncing…" : "Resync all calendars"}
         </Button>
       </div>
     </div>

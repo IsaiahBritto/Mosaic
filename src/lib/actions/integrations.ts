@@ -11,10 +11,11 @@ import { isAppError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import {
   fetchConnectionsForUser,
-  runConnectionSync,
+  resyncAllLinkedCalendarsForUser,
   saveAppleConnection,
 } from "@/lib/integrations/sync.service";
 import type { CalendarConnection } from "@/lib/integrations/types";
+import type { ResyncResult } from "@/lib/integrations/sync-types";
 
 const appleConnectSchema = z.object({
   appleId: z.string().email(),
@@ -70,7 +71,9 @@ export async function getConnections(): Promise<ActionResult<CalendarConnection[
   return actionSuccess(connections);
 }
 
-export async function syncNow(): Promise<ActionResult<null>> {
+export async function resyncAllLinkedCalendars(): Promise<
+  ActionResult<ResyncResult>
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -81,19 +84,92 @@ export async function syncNow(): Promise<ActionResult<null>> {
   }
 
   try {
-    const connections = await fetchConnectionsForUser(supabase, user.id);
-    for (const connection of connections) {
-      await runConnectionSync(supabase, connection);
+    const result = await resyncAllLinkedCalendarsForUser(supabase, user.id, {
+      force: true,
+    });
+
+    if (result.errors.includes("sync_in_progress")) {
+      return actionError("UNKNOWN", "Sync already running. Please wait.");
     }
+
+    revalidatePath("/calendars");
+    revalidatePath("/week");
+    revalidatePath("/month");
+    revalidatePath("/year");
+    return actionSuccess(result);
+  } catch (error) {
+    if (isAppError(error)) {
+      return actionError(error.code, error.message);
+    }
+    return actionError("UNKNOWN", "Sync failed");
+  }
+}
+
+/** @deprecated Use resyncAllLinkedCalendars */
+export async function syncNow(): Promise<ActionResult<null>> {
+  const result = await resyncAllLinkedCalendars();
+  if (!result.success) {
+    return actionError(result.error, result.message);
+  }
+  return actionSuccess(null);
+}
+
+export async function disconnectAppleConnection(
+  connectionId: string,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  try {
+    const { deleteAppleConnection } = await import(
+      "@/lib/integrations/apple/disconnect"
+    );
+    await deleteAppleConnection(supabase, connectionId, user.id);
     revalidatePath("/calendars");
     revalidatePath("/week");
     revalidatePath("/month");
     revalidatePath("/year");
     return actionSuccess(null);
   } catch (error) {
-    if (isAppError(error)) {
-      return actionError(error.code, error.message);
-    }
-    return actionError("UNKNOWN", "Sync failed");
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Disconnect failed",
+    );
+  }
+}
+
+export async function disconnectGoogleConnection(
+  connectionId: string,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  try {
+    const { revokeAndDeleteGoogleConnection } = await import(
+      "@/lib/integrations/google/token-store"
+    );
+    await revokeAndDeleteGoogleConnection(supabase, connectionId, user.id);
+    revalidatePath("/calendars");
+    revalidatePath("/week");
+    revalidatePath("/month");
+    revalidatePath("/year");
+    return actionSuccess(null);
+  } catch (error) {
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Disconnect failed",
+    );
   }
 }

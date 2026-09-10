@@ -74,3 +74,34 @@ export async function exchangeGoogleCode(code: string): Promise<{
     idToken: data.id_token,
   };
 }
+
+export async function refreshGoogleAccessToken(refreshToken: string): Promise<{
+  accessToken: string;
+  expiresIn: number;
+}> {
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body.includes("invalid_grant") ? "invalid_grant" : "Token refresh failed");
+  }
+
+  const data = (await response.json()) as {
+    access_token: string;
+    expires_in: number;
+  };
+
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in,
+  };
+}

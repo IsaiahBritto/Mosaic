@@ -3,12 +3,18 @@ import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { buildEventTimestamps, utcToLocal } from "@/lib/calendar/timezone";
 import { AppError } from "@/lib/errors";
 import {
+  assertCalendarWritable,
+  fetchCalendarSource,
+  isLinkedCalendar,
+} from "@/lib/repositories/calendar-source.repository";
+import {
   deleteEventById,
   deleteEventRecurrence,
   fetchEventById,
   fetchEventsInRange,
   fetchWritableCalendars,
   insertEvent,
+  markEventPendingDelete,
   updateEventById,
   updateEventTimesById,
   upsertEventRecurrence,
@@ -65,6 +71,7 @@ export async function getWritableCalendarOptions(
     id: row.id,
     name: row.name,
     colorHex: row.color_hex,
+    source: row.source as WritableCalendarOption["source"],
   }));
 }
 
@@ -90,10 +97,23 @@ export async function createEventForUser(
   const payload = formToPayload(input);
   await requireCalendarRole(supabase, userId, payload.calendarId, "editor");
 
-  const event = await insertEvent(supabase, {
-    ...payload,
-    createdBy: userId,
-  });
+  const calendar = await fetchCalendarSource(supabase, payload.calendarId);
+  if (!calendar) {
+    throw new AppError("NOT_FOUND", "Calendar not found", 404);
+  }
+  assertCalendarWritable(calendar);
+
+  const linked = isLinkedCalendar(calendar.source);
+  const event = await insertEvent(
+    supabase,
+    {
+      ...payload,
+      createdBy: userId,
+    },
+    linked
+      ? { source: calendar.source, syncStatus: "pending_push" }
+      : undefined,
+  );
 
   await syncRecurrence(supabase, event.id, input.recurrence ?? null);
 
@@ -121,7 +141,20 @@ export async function updateEventForUser(
   const payload = formToPayload(input);
   await requireCalendarRole(supabase, userId, payload.calendarId, "editor");
 
-  await updateEventById(supabase, eventId, payload);
+  const calendar = await fetchCalendarSource(supabase, payload.calendarId);
+  if (!calendar) {
+    throw new AppError("NOT_FOUND", "Calendar not found", 404);
+  }
+  assertCalendarWritable(calendar);
+
+  await updateEventById(
+    supabase,
+    eventId,
+    payload,
+    isLinkedCalendar(calendar.source)
+      ? { syncStatus: "pending_push" }
+      : undefined,
+  );
   await syncRecurrence(supabase, eventId, input.recurrence ?? null);
 
   const full = await fetchEventById(supabase, eventId);
@@ -143,6 +176,18 @@ export async function deleteEventForUser(
   }
 
   await requireCalendarRole(supabase, userId, existing.calendarId, "editor");
+
+  const calendar = await fetchCalendarSource(supabase, existing.calendarId);
+  if (!calendar) {
+    throw new AppError("NOT_FOUND", "Calendar not found", 404);
+  }
+  assertCalendarWritable(calendar);
+
+  if (isLinkedCalendar(calendar.source)) {
+    await markEventPendingDelete(supabase, eventId);
+    return;
+  }
+
   await deleteEventById(supabase, eventId);
 }
 
@@ -161,6 +206,11 @@ export async function rescheduleEventTimes(
   }
 
   await requireCalendarRole(supabase, userId, existing.calendarId, "editor");
+
+  const calendar = await fetchCalendarSource(supabase, existing.calendarId);
+  if (calendar) {
+    assertCalendarWritable(calendar);
+  }
 
   if (input.scope === "single") {
     if (existing.recurrence) {

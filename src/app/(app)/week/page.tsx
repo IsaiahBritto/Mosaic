@@ -79,7 +79,6 @@ export default async function WeekPage({ searchParams }: WeekPageProps) {
           groups={groups}
           visibleIds={visibleIds}
           selectedDate={selectedDate}
-          showEmptyHint={visibleIds.length === 0}
           variant="week"
           defaultViewMode={savedMode}
           displayTimezone={timezone}

@@ -56,7 +56,6 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     timezone,
   );
 
-  const hasVisibleCalendars = visibleIds.length > 0;
   const selectedDateParam =
     params.select === "none" ? undefined : dateParam;
 
@@ -74,21 +73,18 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
       dateParam={dateParam}
       displayTimezone={timezone}
       calendar={
-        hasVisibleCalendars ? (
-          <MonthGrid
-            monthDateParam={dateParam}
-            selectedDateParam={selectedDateParam}
-            availabilityMap={availabilityMap}
-            timezone={timezone}
-          />
-        ) : null
+        <MonthGrid
+          monthDateParam={dateParam}
+          selectedDateParam={selectedDateParam}
+          availabilityMap={availabilityMap}
+          timezone={timezone}
+        />
       }
       calendars={
         <MonthCalendarSection
           groups={groups}
           visibleIds={visibleIds}
           selectedDate={selectedDate}
-          showEmptyHint={!hasVisibleCalendars}
           variant="month"
           displayTimezone={timezone}
         />

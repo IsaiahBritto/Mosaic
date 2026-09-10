@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { exchangeGoogleCode, isGoogleOAuthConfigured } from "@/lib/integrations/google/oauth";
+import {
+  exchangeGoogleCode,
+  isGoogleOAuthConfigured,
+} from "@/lib/integrations/google/oauth";
+import { parseGoogleIdToken } from "@/lib/integrations/google/id-token";
+import { verifyOAuthState } from "@/lib/integrations/oauth-state";
 import { saveGoogleConnection } from "@/lib/integrations/sync.service";
 
 export async function GET(request: Request) {
@@ -11,17 +16,16 @@ export async function GET(request: Request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   if (!code || !state || !isGoogleOAuthConfigured()) {
-    return NextResponse.redirect(new URL("/calendars?error=google_auth_failed", baseUrl));
+    return NextResponse.redirect(
+      new URL("/calendars?error=google_auth_failed", baseUrl),
+    );
   }
 
-  let userId: string;
-  try {
-    const parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf8")) as {
-      userId: string;
-    };
-    userId = parsed.userId;
-  } catch {
-    return NextResponse.redirect(new URL("/calendars?error=invalid_state", baseUrl));
+  const verified = verifyOAuthState(state);
+  if (!verified) {
+    return NextResponse.redirect(
+      new URL("/calendars?error=invalid_state", baseUrl),
+    );
   }
 
   const supabase = await createClient();
@@ -29,23 +33,42 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || user.id !== userId) {
+  if (!user || user.id !== verified.userId) {
     return NextResponse.redirect(new URL("/login", baseUrl));
   }
 
   try {
     const tokens = await exchangeGoogleCode(code);
-    await saveGoogleConnection(
+    let accountId = user.id;
+    let accountEmail = user.email ?? "google-user";
+
+    if (tokens.idToken) {
+      const parsed = parseGoogleIdToken(tokens.idToken);
+      accountId = parsed.sub;
+      if (parsed.email) {
+        accountEmail = parsed.email;
+      }
+    }
+
+    const connectionId = await saveGoogleConnection(
       supabase,
       user.id,
-      user.email ?? "google-user",
-      user.email ?? user.id,
+      accountEmail,
+      accountId,
       tokens.accessToken,
       tokens.refreshToken,
       tokens.expiresIn,
     );
-    return NextResponse.redirect(new URL("/calendars?connected=google", baseUrl));
+
+    return NextResponse.redirect(
+      new URL(
+        `/calendars?connected=google&connectionId=${connectionId}`,
+        baseUrl,
+      ),
+    );
   } catch {
-    return NextResponse.redirect(new URL("/calendars?error=google_token_failed", baseUrl));
+    return NextResponse.redirect(
+      new URL("/calendars?error=google_token_failed", baseUrl),
+    );
   }
 }

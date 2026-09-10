@@ -10,6 +10,7 @@ type CalendarRowProps = {
   calendar: Calendar;
   checked: boolean;
   onToggle: (checked: boolean) => void;
+  onEdit?: () => void;
   onDelete?: () => void;
   showDelete?: boolean;
   compact?: boolean;
@@ -19,6 +20,7 @@ export function CalendarRow({
   calendar,
   checked,
   onToggle,
+  onEdit,
   onDelete,
   showDelete = false,
   compact = false,
@@ -36,9 +38,19 @@ export function CalendarRow({
         color={checked ? THEME.accent : undefined}
       />
       <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-        <span className="truncate text-sm uppercase tracking-wide text-text-primary">
-          {calendar.name}
-        </span>
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="truncate text-left text-sm uppercase tracking-wide text-text-primary hover:underline"
+          >
+            {calendar.name}
+          </button>
+        ) : (
+          <span className="truncate text-sm uppercase tracking-wide text-text-primary">
+            {calendar.name}
+          </span>
+        )}
         <div className="flex items-center gap-2">
           {!compact ? (
             <span className="text-xs text-text-secondary">{calendar.colorHex}</span>

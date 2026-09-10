@@ -169,6 +169,50 @@ export async function removeMemberById(
   }
 }
 
+export async function updateMemberDisplayOverrides(
+  supabase: SupabaseClient,
+  userId: string,
+  calendarId: string,
+  overrides: { name?: string; colorHex?: string },
+): Promise<void> {
+  const payload: Record<string, string | null> = {};
+  if (overrides.name !== undefined) {
+    payload.name_override = overrides.name;
+  }
+  if (overrides.colorHex !== undefined) {
+    payload.color_hex_override = overrides.colorHex;
+  }
+
+  const { error } = await supabase
+    .from("calendar_members")
+    .update(payload)
+    .eq("calendar_id", calendarId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function clearMemberDisplayOverrides(
+  supabase: SupabaseClient,
+  userId: string,
+  calendarId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("calendar_members")
+    .update({
+      name_override: null,
+      color_hex_override: null,
+    })
+    .eq("calendar_id", calendarId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function addCalendarToVisiblePreferences(
   supabase: SupabaseClient,
   userId: string,

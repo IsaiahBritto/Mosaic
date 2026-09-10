@@ -34,6 +34,17 @@ export const saveCalendarPreferencesSchema = z.object({
   visibleIds: z.array(z.string().uuid()),
 });
 
+export const updateCalendarDisplaySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(50).optional(),
+  colorHex: paletteEnum.optional(),
+  scope: z.enum(["global", "personal"]),
+});
+
+export const revertCalendarDisplaySchema = z.object({
+  id: z.string().uuid(),
+});
+
 export type CreateCalendarInput = z.infer<typeof createCalendarSchema>;
 export type UpdateCalendarInput = z.infer<typeof updateCalendarSchema>;
 export type DeleteCalendarInput = z.infer<typeof deleteCalendarSchema>;

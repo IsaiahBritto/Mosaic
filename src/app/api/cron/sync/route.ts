@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { syncAllConnections } from "@/lib/integrations/sync.service";
 
+/** Hourly cron; full linked-calendar sync runs only at midnight America/New_York. */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createClient(url, serviceKey);
-  const results = await syncAllConnections(supabase);
+  const results = await syncAllConnections(supabase, { dailyGate: true });
 
   return NextResponse.json({ synced: results.length, results });
 }

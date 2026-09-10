@@ -73,6 +73,10 @@ export function EventForm({
   const travelBeforeMinutes = watch("travelBeforeMinutes");
   const travelAfterMinutes = watch("travelAfterMinutes");
 
+  const selectedCalendar = calendars.find((c) => c.id === calendarId);
+  const isLinkedCalendar =
+    selectedCalendar?.source === "google" || selectedCalendar?.source === "apple";
+
   const isSameDay = startDate === endDate;
 
   useEffect(() => {
@@ -272,6 +276,12 @@ export function EventForm({
           }
           error={errors.calendarId?.message}
         />
+
+        {isLinkedCalendar ? (
+          <p className="text-xs text-text-secondary">
+            Changes sync at midnight or when you tap Resync all calendars.
+          </p>
+        ) : null}
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="notes" className="text-xs uppercase tracking-wide text-text-secondary">

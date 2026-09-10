@@ -1,6 +1,7 @@
 "use client";
 
-import type { CalendarGroup } from "@/types/calendar";
+import type { Calendar, CalendarGroup } from "@/types/calendar";
+import { orderCalendarsForDisplay } from "@/lib/services/calendar.service";
 import { CalendarRow } from "@/components/calendar/CalendarRow";
 import { CalendarCheckbox } from "@/components/calendar/CalendarCheckbox";
 import { cn } from "@/lib/utils/cn";
@@ -9,6 +10,7 @@ type CalendarListProps = {
   groups: CalendarGroup[];
   visibleIds: string[];
   onToggle: (calendarId: string, visible: boolean) => void;
+  onEdit?: (calendar: Calendar) => void;
   onDelete?: (calendarId: string) => void;
   compact?: boolean;
   showDelete?: boolean;
@@ -16,21 +18,81 @@ type CalendarListProps = {
   showSharedBadge?: boolean;
 };
 
+function renderCalendarItem(
+  calendar: Calendar,
+  props: Pick<
+    CalendarListProps,
+    "visibleIds" | "onToggle" | "onEdit" | "onDelete" | "compact" | "showDelete" | "showSharedBadge"
+  >,
+) {
+  const { visibleIds, onToggle, onEdit, onDelete, compact, showDelete, showSharedBadge } =
+    props;
+
+  if (compact) {
+    return (
+      <CalendarCheckbox
+        key={calendar.id}
+        calendar={calendar}
+        checked={visibleIds.includes(calendar.id)}
+        onToggle={(checked) => onToggle(calendar.id, checked)}
+        onEdit={onEdit ? () => onEdit(calendar) : undefined}
+        showSharedBadge={showSharedBadge}
+      />
+    );
+  }
+
+  return (
+    <CalendarRow
+      key={calendar.id}
+      calendar={calendar}
+      checked={visibleIds.includes(calendar.id)}
+      onToggle={(checked) => onToggle(calendar.id, checked)}
+      onEdit={onEdit ? () => onEdit(calendar) : undefined}
+      onDelete={onDelete ? () => onDelete(calendar.id) : undefined}
+      showDelete={showDelete}
+    />
+  );
+}
+
 export function CalendarList({
   groups,
   visibleIds,
   onToggle,
+  onEdit,
   onDelete,
   compact = false,
   showDelete = false,
   hideGroupHeaders = false,
   showSharedBadge = false,
 }: CalendarListProps) {
+  const itemProps = {
+    visibleIds,
+    onToggle,
+    onEdit,
+    onDelete,
+    compact,
+    showDelete,
+    showSharedBadge,
+  };
+
+  if (compact) {
+    const ordered = orderCalendarsForDisplay(groups);
+    return (
+      <div className="flex flex-col gap-1">
+        {ordered.map((calendar) => renderCalendarItem(calendar, itemProps))}
+      </div>
+    );
+  }
+
+  const visibleGroups = groups.filter(
+    (group) => group.calendars.length > 0 || group.disabled,
+  );
+
   return (
-    <div className="flex flex-col gap-4">
-      {groups.map((group) => (
+    <div className="flex flex-col gap-2">
+      {visibleGroups.map((group) => (
         <section
-          key={group.label}
+          key={group.label + (group.disabled ? "-stub" : "")}
           className={cn(group.disabled && "opacity-50")}
         >
           <h3
@@ -47,32 +109,9 @@ export function CalendarList({
             ) : null}
           </h3>
 
-          {group.calendars.length === 0 && group.emptyMessage && !group.disabled ? (
-            <p className="px-1 py-2 text-sm text-text-secondary">
-              {group.emptyMessage}
-            </p>
-          ) : null}
-
           <div className="flex flex-col gap-1">
             {group.calendars.map((calendar) =>
-              compact ? (
-                <CalendarCheckbox
-                  key={calendar.id}
-                  calendar={calendar}
-                  checked={visibleIds.includes(calendar.id)}
-                  onToggle={(checked) => onToggle(calendar.id, checked)}
-                  showSharedBadge={showSharedBadge}
-                />
-              ) : (
-                <CalendarRow
-                  key={calendar.id}
-                  calendar={calendar}
-                  checked={visibleIds.includes(calendar.id)}
-                  onToggle={(checked) => onToggle(calendar.id, checked)}
-                  onDelete={onDelete ? () => onDelete(calendar.id) : undefined}
-                  showDelete={showDelete}
-                />
-              ),
+              renderCalendarItem(calendar, itemProps),
             )}
           </div>
         </section>

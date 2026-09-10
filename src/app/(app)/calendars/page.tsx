@@ -7,7 +7,12 @@ import type { CalendarConnection } from "@/lib/integrations/types";
 import { withDateParam, parseDateParam } from "@/lib/calendar/date-params";
 
 type CalendarsPageProps = {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{
+    date?: string;
+    error?: string;
+    connected?: string;
+    connectionId?: string;
+  }>;
 };
 
 export default async function CalendarsPage({ searchParams }: CalendarsPageProps) {
@@ -42,6 +47,9 @@ export default async function CalendarsPage({ searchParams }: CalendarsPageProps
       allCalendarIds={calendars.map((c) => c.id)}
       exitHref={exitHref}
       connections={connections}
+      connectError={params.error ?? null}
+      connectedProvider={params.connected ?? null}
+      pickerConnectionId={params.connectionId ?? null}
     />
   );
 }

@@ -1,15 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Calendar, CalendarRole, CalendarRow, CalendarType } from "@/types/calendar";
+import type {
+  Calendar,
+  CalendarRole,
+  CalendarRow,
+  CalendarSource,
+  CalendarType,
+} from "@/types/calendar";
+import { isCalendarReadOnly } from "@/lib/integrations/google/event-map";
 
 type CalendarMemberJoin = {
   role: CalendarRole;
   invite_status: string;
+  name_override: string | null;
+  color_hex_override: string | null;
   calendars: {
     id: string;
     owner_id: string;
     name: string;
     color_hex: string;
     type: CalendarType;
+    source: CalendarSource;
+    connection_id: string | null;
+    external_calendar_access_role: string | null;
     is_visible_default: boolean;
     created_at: string;
   };
@@ -19,20 +31,34 @@ export function mapCalendarRow(
   row: CalendarMemberJoin["calendars"],
   role: CalendarRole,
   visibleIds: string[],
+  overrides?: {
+    nameOverride?: string | null;
+    colorHexOverride?: string | null;
+  },
 ): Calendar {
-  const isVisible =
-    visibleIds.length === 0
-      ? true
-      : visibleIds.includes(row.id);
+  const isVisible = visibleIds.includes(row.id);
+  const canonicalName = row.name;
+  const canonicalColorHex = row.color_hex;
+  const name = overrides?.nameOverride ?? canonicalName;
+  const colorHex = overrides?.colorHexOverride ?? canonicalColorHex;
+  const hasPersonalOverride = Boolean(
+    overrides?.nameOverride ?? overrides?.colorHexOverride,
+  );
 
   return {
     id: row.id,
-    name: row.name,
-    colorHex: row.color_hex,
+    name,
+    colorHex,
     type: row.type,
+    source: row.source ?? "native",
     ownerId: row.owner_id,
     isVisible,
     role,
+    connectionId: row.connection_id,
+    readOnly: isCalendarReadOnly(row.external_calendar_access_role),
+    canonicalName,
+    canonicalColorHex,
+    hasPersonalOverride,
   };
 }
 
@@ -48,12 +74,17 @@ export async function fetchCalendarsForUser(
       `
       role,
       invite_status,
+      name_override,
+      color_hex_override,
       calendars (
         id,
         owner_id,
         name,
         color_hex,
         type,
+        source,
+        connection_id,
+        external_calendar_access_role,
         is_visible_default,
         created_at
       )
@@ -71,7 +102,10 @@ export async function fetchCalendarsForUser(
   return rows
     .filter((row) => row.calendars != null)
     .map((row) =>
-      mapCalendarRow(row.calendars, row.role, visibleIds),
+      mapCalendarRow(row.calendars, row.role, visibleIds, {
+        nameOverride: row.name_override,
+        colorHexOverride: row.color_hex_override,
+      }),
     );
 }
 
@@ -208,10 +242,15 @@ export async function deleteCalendarById(
 export async function fetchCalendarById(
   supabase: SupabaseClient,
   calendarId: string,
-): Promise<{ id: string; owner_id: string; type: CalendarType } | null> {
+): Promise<{
+  id: string;
+  owner_id: string;
+  type: CalendarType;
+  source: CalendarSource;
+} | null> {
   const { data, error } = await supabase
     .from("calendars")
-    .select("id, owner_id, type")
+    .select("id, owner_id, type, source")
     .eq("id", calendarId)
     .maybeSingle();
 
