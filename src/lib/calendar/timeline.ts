@@ -253,7 +253,7 @@ export function getTimelineScrollTargetMinutes(
     }),
   );
 
-  return Math.min(eightAmMinutes, earliestEventMinutes);
+  return earliestEventMinutes;
 }
 
 export function getShellScrollContainer(from: Element | null): HTMLElement | null {

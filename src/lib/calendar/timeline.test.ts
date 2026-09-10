@@ -135,7 +135,7 @@ describe("getTimelineScrollTargetMinutes", () => {
     expect(target).toBe(minutesFromTimelineStart(now.toISOString(), timezone));
   });
 
-  it("returns 8am when first event starts after 8am", () => {
+  it("returns first event start when it begins after 8am", () => {
     const event: EventInstance = {
       ...baseEvent,
       startAt: "2026-06-15T14:00:00.000Z",
@@ -147,7 +147,24 @@ describe("getTimelineScrollTargetMinutes", () => {
       dateParam,
       new Date("2026-06-10T12:00:00.000Z"),
     );
-    expect(target).toBe(WAKING_START_HOUR * 60);
+    expect(target).toBe(
+      minutesFromTimelineStart("2026-06-15T14:00:00.000Z", timezone),
+    );
+  });
+
+  it("returns first event start for an evening event at 6:30pm", () => {
+    const event: EventInstance = {
+      ...baseEvent,
+      startAt: "2026-06-15T22:30:00.000Z",
+      endAt: "2026-06-15T23:30:00.000Z",
+    };
+    const target = getTimelineScrollTargetMinutes(
+      [event],
+      timezone,
+      dateParam,
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+    expect(target).toBe(18 * 60 + 30);
   });
 
   it("returns first event start when it begins before 8am", () => {
