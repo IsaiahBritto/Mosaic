@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PX_PER_HOUR, TIMELINE_DAY_START_HOUR, TIMELINE_EDGE_PADDING_PX } from "@/lib/calendar/constants";
+import { WAKING_START_HOUR } from "@/lib/calendar/constants";
+import { getTodayCalendarDate } from "@/lib/calendar/timezone";
 import {
   applyMinutesDeltaToEvent,
   eventToPosition,
   getTimelineHours,
+  getTimelineScrollTargetMinutes,
   minutesFromTimelineStart,
   pxToSnappedMinutes,
   snappedMinutesToPx,
@@ -118,6 +121,68 @@ describe("snap helpers", () => {
   it("converts snapped minutes back to pixels", () => {
     expect(snappedMinutesToPx(60)).toBe(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR);
     expect(snappedMinutesToPx(15)).toBe(TIMELINE_EDGE_PADDING_PX + PX_PER_HOUR / 4);
+  });
+});
+
+describe("getTimelineScrollTargetMinutes", () => {
+  const timezone = "America/New_York";
+  const dateParam = "2026-06-15";
+
+  it("returns current time minutes for today", () => {
+    const now = new Date("2026-06-15T18:37:00.000Z");
+    const todayParam = getTodayCalendarDate(timezone);
+    const target = getTimelineScrollTargetMinutes([], timezone, todayParam, now);
+    expect(target).toBe(minutesFromTimelineStart(now.toISOString(), timezone));
+  });
+
+  it("returns 8am when first event starts after 8am", () => {
+    const event: EventInstance = {
+      ...baseEvent,
+      startAt: "2026-06-15T14:00:00.000Z",
+      endAt: "2026-06-15T15:00:00.000Z",
+    };
+    const target = getTimelineScrollTargetMinutes(
+      [event],
+      timezone,
+      dateParam,
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+    expect(target).toBe(WAKING_START_HOUR * 60);
+  });
+
+  it("returns first event start when it begins before 8am", () => {
+    const event: EventInstance = {
+      ...baseEvent,
+      startAt: "2026-06-15T10:00:00.000Z",
+      endAt: "2026-06-15T11:00:00.000Z",
+    };
+    const target = getTimelineScrollTargetMinutes(
+      [event],
+      timezone,
+      dateParam,
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+    expect(target).toBe(6 * 60);
+  });
+
+  it("returns 8am when there are no timed events", () => {
+    const target = getTimelineScrollTargetMinutes(
+      [],
+      timezone,
+      dateParam,
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+    expect(target).toBe(WAKING_START_HOUR * 60);
+  });
+
+  it("returns 8am when only all-day events exist", () => {
+    const target = getTimelineScrollTargetMinutes(
+      [{ ...baseEvent, isAllDay: true }],
+      timezone,
+      dateParam,
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+    expect(target).toBe(WAKING_START_HOUR * 60);
   });
 });
 

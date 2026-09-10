@@ -9,6 +9,7 @@ import {
   applyMinutesDeltaToEvent,
   clampTimelineMinutes,
   eventToPosition,
+  getShellScrollContainer,
   minutesFromTimelineStart,
   positionFromMinutes,
   SNAP_INTERVAL_MINUTES,
@@ -59,13 +60,13 @@ type TapState = {
   pointerId: number;
 };
 
-function applyEdgeScroll(clientY: number, main: HTMLElement): void {
-  const rect = main.getBoundingClientRect();
+function applyEdgeScroll(clientY: number, scrollContainer: HTMLElement): void {
+  const rect = scrollContainer.getBoundingClientRect();
 
   if (clientY < rect.top + EDGE_SCROLL_ZONE_PX) {
-    main.scrollTop -= EDGE_SCROLL_SPEED_PX;
+    scrollContainer.scrollTop -= EDGE_SCROLL_SPEED_PX;
   } else if (clientY > rect.bottom - EDGE_SCROLL_ZONE_PX) {
-    main.scrollTop += EDGE_SCROLL_SPEED_PX;
+    scrollContainer.scrollTop += EDGE_SCROLL_SPEED_PX;
   }
 }
 
@@ -85,13 +86,13 @@ export function useTimelineDrag({
 
   const basePosition = eventToPosition(event, displayTimezone, dateParam);
 
-  const getMainElement = useCallback(() => {
-    return timelineRef.current?.closest("main") ?? null;
+  const getScrollContainer = useCallback(() => {
+    return getShellScrollContainer(timelineRef.current);
   }, [timelineRef]);
 
-  const getMainScrollTop = useCallback(() => {
-    return getMainElement()?.scrollTop ?? 0;
-  }, [getMainElement]);
+  const getScrollTop = useCallback(() => {
+    return getScrollContainer()?.scrollTop ?? 0;
+  }, [getScrollContainer]);
 
   const resetDrag = useCallback(() => {
     dragState.current = null;
@@ -104,10 +105,10 @@ export function useTimelineDrag({
       return (
         clientY -
         state.startY +
-        (getMainScrollTop() - state.startScrollTop)
+        (getScrollTop() - state.startScrollTop)
       );
     },
-    [getMainScrollTop],
+    [getScrollTop],
   );
 
   const computePreview = useCallback(
@@ -212,7 +213,7 @@ export function useTimelineDrag({
       dragState.current = {
         mode,
         startY: pointerEvent.clientY,
-        startScrollTop: getMainScrollTop(),
+        startScrollTop: getScrollTop(),
         initialStartMinutes: minutesFromTimelineStart(
           event.startAt,
           displayTimezone,
@@ -228,7 +229,7 @@ export function useTimelineDrag({
       didDragRef.current = false;
       setIsDragging(true);
     },
-    [displayTimezone, event.endAt, event.startAt, getMainScrollTop],
+    [displayTimezone, event.endAt, event.startAt, getScrollTop],
   );
 
   const handlePointerDown = useCallback(
@@ -270,10 +271,10 @@ export function useTimelineDrag({
       }
 
       const state = dragState.current;
-      const main = getMainElement();
+      const scrollContainer = getScrollContainer();
 
-      if (main) {
-        applyEdgeScroll(pointerEvent.clientY, main);
+      if (scrollContainer) {
+        applyEdgeScroll(pointerEvent.clientY, scrollContainer);
       }
 
       const effectiveDeltaY = computeEffectiveDeltaY(
@@ -288,7 +289,7 @@ export function useTimelineDrag({
 
       updatePreview(effectiveDeltaY, state);
     },
-    [computeEffectiveDeltaY, getMainElement, timelineRef, updatePreview],
+    [computeEffectiveDeltaY, getScrollContainer, timelineRef, updatePreview],
   );
 
   const buildPayload = useCallback(

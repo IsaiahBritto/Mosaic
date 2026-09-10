@@ -2,23 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { parseISO } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import {
-  formatCalendarDate,
-  getTodayCalendarDate,
-} from "@/lib/calendar/timezone";
+import { formatCalendarDate } from "@/lib/calendar/timezone";
 import {
   TIMELINE_DAY_START_HOUR,
-  TIMELINE_EDGE_PADDING_PX,
   TIMELINE_HEIGHT_PX,
   PX_PER_HOUR,
-  WAKING_START_HOUR,
 } from "@/lib/calendar/constants";
 import {
+  getShellScrollContainer,
   getTimelineHours,
+  getTimelineScrollTargetMinutes,
   hourIndexToPx,
   pxToSnappedMinutes,
+  scrollTimelineToMinutes,
   toEventDisplayData,
 } from "@/lib/calendar/timeline";
 import { getEventSegmentForDay } from "@/lib/calendar/event-segments";
@@ -37,31 +33,6 @@ type DayTimelineProps = {
   displayTimezone: string;
   writableCalendarIds: string[];
 };
-
-function getScrollTargetHour(
-  events: EventInstance[],
-  displayTimezone: string,
-  dateParam: string,
-): number {
-  const timedEvents = events.filter((event) => !event.isAllDay);
-
-  if (timedEvents.length > 0) {
-    const earliest = timedEvents.reduce((min, event) => {
-      const hour = Number(
-        formatInTimeZone(parseISO(event.startAt), displayTimezone, "H"),
-      );
-      return Math.min(min, hour);
-    }, 23);
-    return earliest;
-  }
-
-  if (dateParam === getTodayCalendarDate(displayTimezone)) {
-    const currentHour = Number(formatInTimeZone(new Date(), displayTimezone, "H"));
-    return Math.max(WAKING_START_HOUR, currentHour);
-  }
-
-  return WAKING_START_HOUR;
-}
 
 export function DayTimeline({
   date,
@@ -83,27 +54,37 @@ export function DayTimeline({
   useEffect(() => {
     setSelectedInstanceId(null);
 
-    const main = timelineRef.current?.closest("main");
-    if (!main) {
+    const timeline = timelineRef.current;
+    const scrollContainer = getShellScrollContainer(timeline);
+    if (!timeline || !scrollContainer) {
       return;
     }
 
-    const scrollTargetHour = getScrollTargetHour(events, displayTimezone, dateParam);
-
-    main.scrollTop = Math.max(
-      0,
-      TIMELINE_EDGE_PADDING_PX +
-        (scrollTargetHour - TIMELINE_DAY_START_HOUR) * PX_PER_HOUR -
-        SCROLL_PADDING_PX,
+    const targetMinutes = getTimelineScrollTargetMinutes(
+      events,
+      displayTimezone,
+      dateParam,
     );
+
+    const frameId = requestAnimationFrame(() => {
+      scrollTimelineToMinutes(
+        scrollContainer,
+        timeline,
+        targetMinutes,
+        SCROLL_PADDING_PX,
+      );
+    });
 
     function handleWheel(event: WheelEvent) {
       event.preventDefault();
-      main!.scrollTop += event.deltaY * WHEEL_DAMPENING;
+      scrollContainer.scrollTop += event.deltaY * WHEEL_DAMPENING;
     }
 
-    main.addEventListener("wheel", handleWheel, { passive: false });
-    return () => main.removeEventListener("wheel", handleWheel);
+    scrollContainer.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      cancelAnimationFrame(frameId);
+      scrollContainer.removeEventListener("wheel", handleWheel);
+    };
   }, [dateParam, displayTimezone, events]);
 
   function handleEmptyClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -140,7 +121,7 @@ export function DayTimeline({
   return (
     <div className="px-2 pb-6">
       {events.some((event) => event.isAllDay) ? (
-        <div className="mb-3 space-y-2 px-1">
+        <div className="sticky top-0 z-10 mb-3 space-y-2 bg-background px-1 pb-2">
           {events
             .filter((event) => event.isAllDay)
             .map((event) => (

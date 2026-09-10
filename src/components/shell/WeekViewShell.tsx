@@ -40,7 +40,9 @@ export function WeekViewShell({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 bg-background">{pinned}</div>
-      <div className="flex-1 overflow-y-auto">{scrollable}</div>
+      <div className="flex-1 overflow-y-auto" data-shell-scroll>
+        {scrollable}
+      </div>
     </div>
   );
 }

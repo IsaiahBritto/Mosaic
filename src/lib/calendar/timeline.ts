@@ -7,8 +7,9 @@ import {
   TIMELINE_DAY_START_HOUR,
   TIMELINE_EDGE_PADDING_PX,
   TIMELINE_TOTAL_HOURS,
+  WAKING_START_HOUR,
 } from "@/lib/calendar/constants";
-import { formatEventTime } from "@/lib/calendar/timezone";
+import { formatEventTime, getTodayCalendarDate } from "@/lib/calendar/timezone";
 import { getEventSegmentForDay } from "@/lib/calendar/event-segments";
 import type { EventInstance } from "@/types/event";
 
@@ -213,6 +214,76 @@ export function getTimelineHours(): number[] {
     { length: TIMELINE_DAY_END_HOUR - TIMELINE_DAY_START_HOUR + 1 },
     (_, index) => TIMELINE_DAY_START_HOUR + index,
   );
+}
+
+function getTimedEventsOnDay(
+  events: EventInstance[],
+  dateParam: string,
+  displayTimezone: string,
+): EventInstance[] {
+  return events.filter((event) => {
+    if (event.isAllDay) {
+      return false;
+    }
+    return getEventSegmentForDay(event, dateParam, displayTimezone) !== null;
+  });
+}
+
+export function getTimelineScrollTargetMinutes(
+  events: EventInstance[],
+  displayTimezone: string,
+  dateParam: string,
+  now: Date = new Date(),
+): number {
+  if (dateParam === getTodayCalendarDate(displayTimezone)) {
+    return minutesFromTimelineStart(now.toISOString(), displayTimezone);
+  }
+
+  const eightAmMinutes = WAKING_START_HOUR * 60;
+  const timedEvents = getTimedEventsOnDay(events, dateParam, displayTimezone);
+
+  if (timedEvents.length === 0) {
+    return eightAmMinutes;
+  }
+
+  const earliestEventMinutes = Math.min(
+    ...timedEvents.map((event) => {
+      const segment = getEventSegmentForDay(event, dateParam, displayTimezone)!;
+      return minutesFromTimelineStart(segment.segmentStartAt, displayTimezone);
+    }),
+  );
+
+  return Math.min(eightAmMinutes, earliestEventMinutes);
+}
+
+export function getShellScrollContainer(from: Element | null): HTMLElement | null {
+  return from?.closest("[data-shell-scroll]") ?? null;
+}
+
+export function getElementOffsetTopWithin(
+  container: HTMLElement,
+  element: HTMLElement,
+): number {
+  return (
+    element.getBoundingClientRect().top -
+    container.getBoundingClientRect().top +
+    container.scrollTop
+  );
+}
+
+export function scrollTimelineToMinutes(
+  scrollContainer: HTMLElement,
+  timelineElement: HTMLElement,
+  targetMinutes: number,
+  paddingPx = 8,
+): void {
+  const targetPx =
+    TIMELINE_EDGE_PADDING_PX + (targetMinutes / 60) * PX_PER_HOUR;
+  const timelineOffset = getElementOffsetTopWithin(
+    scrollContainer,
+    timelineElement,
+  );
+  scrollContainer.scrollTop = Math.max(0, timelineOffset + targetPx - paddingPx);
 }
 
 export function formatHourLabel(hour: number): string {
