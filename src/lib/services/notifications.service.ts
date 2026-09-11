@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchPendingInvitesForEmail } from "@/lib/repositories/members.repository";
-import { fetchPendingIncomingRequests } from "@/lib/repositories/friends.repository";
+import {
+  fetchPendingIncomingRequests,
+  getRequesterDisplayName,
+} from "@/lib/repositories/friends.repository";
 
 export type FriendRequestNotification = {
   type: "friend_request";
@@ -38,7 +41,7 @@ export async function getNotificationsForUser(
     (request) => ({
       type: "friend_request",
       id: request.id,
-      requesterName: request.requester.display_name,
+      requesterName: getRequesterDisplayName(request),
       createdAt: request.created_at,
     }),
   );

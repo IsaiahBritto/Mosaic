@@ -18,6 +18,7 @@ import {
   removeFriendForUser,
   sendFriendRequestForUser,
 } from "@/lib/services/friends.service";
+import { getRequesterDisplayName } from "@/lib/repositories/friends.repository";
 import {
   friendRequestIdSchema,
   removeFriendSchema,
@@ -307,7 +308,7 @@ export async function getReceivedFriendRequests(): Promise<
     return actionSuccess(
       requests.map((request) => ({
         id: request.id,
-        requesterName: request.requester.display_name,
+        requesterName: getRequesterDisplayName(request),
         createdAt: request.created_at,
       })),
     );

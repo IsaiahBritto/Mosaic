@@ -16,8 +16,14 @@ export type FriendProfile = {
 };
 
 export type FriendRequestWithRequester = FriendRequestRow & {
-  requester: FriendProfile;
+  requester: FriendProfile | null;
 };
+
+export function getRequesterDisplayName(
+  request: { requester: FriendProfile | null },
+): string {
+  return request.requester?.display_name?.trim() || "Someone";
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
