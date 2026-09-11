@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCalendarInviteName } from "@/lib/repositories/members.repository";
 import { getPendingInvitesForUser } from "@/lib/services/sharing.service";
 import { PendingInvitesBanner } from "@/components/sharing/PendingInvitesBanner";
 
@@ -18,7 +19,7 @@ export async function PendingInvitesSection() {
     <PendingInvitesBanner
       invites={invites.map((invite) => ({
         token: invite.invite_token,
-        calendarName: invite.calendars.name,
+        calendarName: getCalendarInviteName(invite),
         role: invite.role,
       }))}
     />

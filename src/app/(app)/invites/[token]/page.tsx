@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCalendarInviteName } from "@/lib/repositories/members.repository";
 import { getInviteDetails } from "@/lib/services/sharing.service";
 import { InviteAcceptCard } from "@/components/sharing/InviteAcceptCard";
 import { AppHeader } from "@/components/shell/AppHeader";
@@ -33,7 +34,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
       <AppHeader title="Invite" exitHref="/month" saveLabel="" />
       <InviteAcceptCard
         token={token}
-        calendarName={invite.calendars.name}
+        calendarName={getCalendarInviteName(invite)}
         role={invite.role}
         emailMismatch={emailMismatch}
         invitedEmail={invite.invited_email ?? undefined}

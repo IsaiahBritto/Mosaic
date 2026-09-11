@@ -8,6 +8,7 @@ import {
 } from "@/lib/actions/types";
 import { isAppError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
+import { getCalendarInviteName } from "@/lib/repositories/members.repository";
 import {
   acceptInviteForUser,
   declineInviteForUser,
@@ -151,7 +152,7 @@ export async function getPendingInvites(): Promise<
   return actionSuccess(
     invites.map((invite) => ({
       token: invite.invite_token,
-      calendarName: invite.calendars.name,
+      calendarName: getCalendarInviteName(invite),
       role: invite.role,
     })),
   );

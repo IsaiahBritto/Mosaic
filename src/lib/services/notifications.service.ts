@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPendingInvitesForEmail } from "@/lib/repositories/members.repository";
+import {
+  fetchPendingInvitesForEmail,
+  getCalendarInviteName,
+} from "@/lib/repositories/members.repository";
 import {
   fetchPendingIncomingRequests,
   getRequesterDisplayName,
@@ -50,7 +53,7 @@ export async function getNotificationsForUser(
     (invite) => ({
       type: "calendar_invite",
       token: invite.invite_token,
-      calendarName: invite.calendars.name,
+      calendarName: getCalendarInviteName(invite),
       role: invite.role,
     }),
   );

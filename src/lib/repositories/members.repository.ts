@@ -12,6 +12,31 @@ export type CalendarMemberRow = {
   created_at: string;
 };
 
+export type CalendarInviteSummary = {
+  name: string;
+  owner_id: string;
+};
+
+export type CalendarInviteDetails = {
+  id: string;
+  name: string;
+  owner_id: string;
+};
+
+export type CalendarMemberWithCalendarSummary = CalendarMemberRow & {
+  calendars: CalendarInviteSummary | null;
+};
+
+export type CalendarMemberWithCalendarDetails = CalendarMemberRow & {
+  calendars: CalendarInviteDetails | null;
+};
+
+export function getCalendarInviteName(
+  invite: { calendars: { name: string } | null },
+): string {
+  return invite.calendars?.name?.trim() || "Shared calendar";
+}
+
 export async function insertPendingInvite(
   supabase: SupabaseClient,
   calendarId: string,
@@ -41,11 +66,7 @@ export async function insertPendingInvite(
 export async function fetchInviteByToken(
   supabase: SupabaseClient,
   token: string,
-): Promise<
-  (CalendarMemberRow & {
-    calendars: { id: string; name: string; owner_id: string };
-  }) | null
-> {
+): Promise<CalendarMemberWithCalendarDetails | null> {
   const { data, error } = await supabase
     .from("calendar_members")
     .select("*, calendars(id, name, owner_id)")
@@ -56,46 +77,34 @@ export async function fetchInviteByToken(
     throw new Error(error.message);
   }
 
-  return data as
-    | (CalendarMemberRow & {
-        calendars: { id: string; name: string; owner_id: string };
-      })
-    | null;
+  return (data as CalendarMemberWithCalendarDetails | null) ?? null;
 }
 
 export async function acceptInviteByToken(
   supabase: SupabaseClient,
   token: string,
-  userId: string,
-  userEmail: string,
+  _userId: string,
+  _userEmail: string,
 ): Promise<string> {
-  const invite = await fetchInviteByToken(supabase, token);
-  if (!invite || invite.invite_status !== "pending") {
-    throw new Error("Invite not found");
-  }
-
-  if (invite.invited_email?.toLowerCase() !== userEmail.toLowerCase()) {
-    throw new Error("Email mismatch");
-  }
-
-  const { error } = await supabase
-    .from("calendar_members")
-    .update({
-      user_id: userId,
-      invite_status: "accepted",
-    })
-    .eq("invite_token", token);
+  const { data, error } = await supabase.rpc("accept_calendar_invite", {
+    p_token: token,
+  });
 
   if (error) {
+    if (error.message.includes("Email mismatch")) {
+      throw new Error("Email mismatch");
+    }
+    if (error.message.includes("Invite not found")) {
+      throw new Error("Invite not found");
+    }
     throw new Error(error.message);
   }
 
-  await supabase
-    .from("calendars")
-    .update({ type: "shared" })
-    .eq("id", invite.calendar_id);
+  if (!data) {
+    throw new Error("Invite not found");
+  }
 
-  return invite.calendar_id;
+  return data as string;
 }
 
 export async function declineInviteByToken(
@@ -115,13 +124,7 @@ export async function declineInviteByToken(
 export async function fetchPendingInvitesForEmail(
   supabase: SupabaseClient,
   email: string,
-): Promise<
-  Array<
-    CalendarMemberRow & {
-      calendars: { name: string; owner_id: string };
-    }
-  >
-> {
+): Promise<CalendarMemberWithCalendarSummary[]> {
   const { data, error } = await supabase
     .from("calendar_members")
     .select("*, calendars(name, owner_id)")
@@ -132,11 +135,7 @@ export async function fetchPendingInvitesForEmail(
     throw new Error(error.message);
   }
 
-  return (data ?? []) as Array<
-    CalendarMemberRow & {
-      calendars: { name: string; owner_id: string };
-    }
-  >;
+  return (data ?? []) as CalendarMemberWithCalendarSummary[];
 }
 
 export async function fetchSentInvitesForCalendar(
