@@ -16,17 +16,33 @@ type CalendarListProps = {
   showDelete?: boolean;
   hideGroupHeaders?: boolean;
   showSharedBadge?: boolean;
+  onSharedClick?: (calendar: Calendar) => void;
 };
 
 function renderCalendarItem(
   calendar: Calendar,
   props: Pick<
     CalendarListProps,
-    "visibleIds" | "onToggle" | "onEdit" | "onDelete" | "compact" | "showDelete" | "showSharedBadge"
+    | "visibleIds"
+    | "onToggle"
+    | "onEdit"
+    | "onDelete"
+    | "compact"
+    | "showDelete"
+    | "showSharedBadge"
+    | "onSharedClick"
   >,
 ) {
-  const { visibleIds, onToggle, onEdit, onDelete, compact, showDelete, showSharedBadge } =
-    props;
+  const {
+    visibleIds,
+    onToggle,
+    onEdit,
+    onDelete,
+    compact,
+    showDelete,
+    showSharedBadge,
+    onSharedClick,
+  } = props;
 
   if (compact) {
     return (
@@ -37,6 +53,7 @@ function renderCalendarItem(
         onToggle={(checked) => onToggle(calendar.id, checked)}
         onEdit={onEdit ? () => onEdit(calendar) : undefined}
         showSharedBadge={showSharedBadge}
+        onSharedClick={onSharedClick}
       />
     );
   }
@@ -64,6 +81,7 @@ export function CalendarList({
   showDelete = false,
   hideGroupHeaders = false,
   showSharedBadge = false,
+  onSharedClick,
 }: CalendarListProps) {
   const itemProps = {
     visibleIds,
@@ -73,6 +91,7 @@ export function CalendarList({
     compact,
     showDelete,
     showSharedBadge,
+    onSharedClick,
   };
 
   if (compact) {

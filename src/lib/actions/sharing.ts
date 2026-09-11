@@ -12,15 +12,18 @@ import { getCalendarInviteName } from "@/lib/repositories/members.repository";
 import {
   acceptInviteForUser,
   declineInviteForUser,
+  getCalendarSharingDetailsForUser,
   getPendingInvitesForUser,
   getSentInvitesForCalendar,
   inviteToCalendarForUser,
   leaveCalendarForUser,
   removeMemberForUser,
+  type CalendarSharingDetails,
 } from "@/lib/services/sharing.service";
 import {
   acceptInviteSchema,
   declineInviteSchema,
+  getCalendarSharingDetailsSchema,
   inviteToCalendarSchema,
   leaveCalendarSchema,
   removeMemberSchema,
@@ -219,6 +222,38 @@ export async function removeMember(input: {
       return actionError(error.code, error.message);
     }
     return actionError("UNKNOWN", "Failed to remove member");
+  }
+}
+
+export async function getCalendarSharingDetails(input: {
+  calendarId: string;
+}): Promise<ActionResult<CalendarSharingDetails>> {
+  const parsed = getCalendarSharingDetailsSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError("VALIDATION_ERROR", "Invalid input");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  try {
+    const details = await getCalendarSharingDetailsForUser(
+      supabase,
+      user.id,
+      parsed.data.calendarId,
+    );
+    return actionSuccess(details);
+  } catch (error) {
+    if (isAppError(error)) {
+      return actionError(error.code, error.message);
+    }
+    return actionError("UNKNOWN", "Failed to load sharing details");
   }
 }
 

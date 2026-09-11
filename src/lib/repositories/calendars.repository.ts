@@ -197,6 +197,21 @@ export async function insertCalendar(
   return { ...calendar, role: "owner" };
 }
 
+export async function updateCalendarType(
+  supabase: SupabaseClient,
+  calendarId: string,
+  type: CalendarType,
+): Promise<void> {
+  const { error } = await supabase
+    .from("calendars")
+    .update({ type })
+    .eq("id", calendarId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function updateCalendarById(
   supabase: SupabaseClient,
   calendarId: string,
@@ -245,12 +260,13 @@ export async function fetchCalendarById(
 ): Promise<{
   id: string;
   owner_id: string;
+  name: string;
   type: CalendarType;
   source: CalendarSource;
 } | null> {
   const { data, error } = await supabase
     .from("calendars")
-    .select("id, owner_id, type, source")
+    .select("id, owner_id, name, type, source")
     .eq("id", calendarId)
     .maybeSingle();
 

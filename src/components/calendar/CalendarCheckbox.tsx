@@ -2,6 +2,8 @@
 
 import type { Calendar } from "@/types/calendar";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { SharedBadge } from "@/components/calendar/SharedBadge";
+import { isSharedCalendar } from "@/lib/calendar/shared";
 
 type CalendarCheckboxProps = {
   calendar: Calendar;
@@ -9,6 +11,7 @@ type CalendarCheckboxProps = {
   onToggle: (checked: boolean) => void;
   onEdit?: () => void;
   showSharedBadge?: boolean;
+  onSharedClick?: (calendar: Calendar) => void;
 };
 
 export function CalendarCheckbox({
@@ -17,8 +20,9 @@ export function CalendarCheckbox({
   onToggle,
   onEdit,
   showSharedBadge = false,
+  onSharedClick,
 }: CalendarCheckboxProps) {
-  const isShared = calendar.type === "shared" || calendar.role !== "owner";
+  const isShared = isSharedCalendar(calendar);
 
   return (
     <div className="flex items-center gap-3 py-1.5">
@@ -40,9 +44,11 @@ export function CalendarCheckbox({
           <span className="truncate text-sm text-text-primary">{calendar.name}</span>
         )}
         {showSharedBadge && isShared ? (
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-accent">
-            +shared
-          </span>
+          <SharedBadge
+            onClick={
+              onSharedClick ? () => onSharedClick(calendar) : undefined
+            }
+          />
         ) : null}
       </span>
     </div>

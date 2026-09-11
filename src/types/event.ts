@@ -1,3 +1,5 @@
+import type { CalendarRole, CalendarType } from "@/types/calendar";
+
 export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
 
 export type RecurrenceRule = {
@@ -45,4 +47,6 @@ export type WritableCalendarOption = {
   name: string;
   colorHex: string;
   source?: "native" | "google" | "apple";
+  type?: CalendarType;
+  role?: CalendarRole;
 };

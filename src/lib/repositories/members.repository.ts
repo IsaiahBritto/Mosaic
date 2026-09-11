@@ -155,6 +155,88 @@ export async function fetchSentInvitesForCalendar(
   return (data ?? []) as CalendarMemberRow[];
 }
 
+export type CalendarMemberDisplay = {
+  memberId: string;
+  userId: string;
+  displayName: string;
+  role: CalendarRole;
+  isOwner: boolean;
+};
+
+export async function fetchMemberById(
+  supabase: SupabaseClient,
+  memberId: string,
+): Promise<CalendarMemberRow | null> {
+  const { data, error } = await supabase
+    .from("calendar_members")
+    .select("*")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as CalendarMemberRow | null) ?? null;
+}
+
+export async function fetchAcceptedMembersForCalendar(
+  supabase: SupabaseClient,
+  calendarId: string,
+  ownerId: string,
+): Promise<CalendarMemberDisplay[]> {
+  const { data, error } = await supabase
+    .from("calendar_members")
+    .select(
+      "id, user_id, role, profile:profiles!calendar_members_user_id_fkey(id, display_name)",
+    )
+    .eq("calendar_id", calendarId)
+    .eq("invite_status", "accepted")
+    .not("user_id", "is", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? [])
+    .filter((row) => row.user_id != null)
+    .map((row) => {
+      const profileRaw = row.profile as
+        | { id: string; display_name: string }
+        | { id: string; display_name: string }[]
+        | null;
+      const profile = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw;
+      const userId = row.user_id as string;
+      const isOwner = userId === ownerId;
+      return {
+        memberId: row.id as string,
+        userId,
+        displayName: profile?.display_name?.trim() || "Member",
+        role: row.role as CalendarRole,
+        isOwner,
+      };
+    });
+}
+
+export async function countAcceptedNonOwnerMembers(
+  supabase: SupabaseClient,
+  calendarId: string,
+  ownerId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("calendar_members")
+    .select("id", { count: "exact", head: true })
+    .eq("calendar_id", calendarId)
+    .eq("invite_status", "accepted")
+    .neq("user_id", ownerId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
 export async function removeMemberById(
   supabase: SupabaseClient,
   memberId: string,
@@ -233,6 +315,31 @@ export async function addCalendarToVisiblePreferences(
     .from("user_preferences")
     .update({
       visible_calendar_ids: [...current, calendarId],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+}
+
+export async function removeCalendarFromVisiblePreferences(
+  supabase: SupabaseClient,
+  userId: string,
+  calendarId: string,
+): Promise<void> {
+  const { data } = await supabase
+    .from("user_preferences")
+    .select("visible_calendar_ids")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const current = (data?.visible_calendar_ids as string[] | undefined) ?? [];
+  if (!current.includes(calendarId)) {
+    return;
+  }
+
+  await supabase
+    .from("user_preferences")
+    .update({
+      visible_calendar_ids: current.filter((id) => id !== calendarId),
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId);

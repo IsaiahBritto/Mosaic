@@ -18,6 +18,7 @@ describe("deleteCalendarForUser", () => {
     vi.mocked(fetchCalendarById).mockResolvedValue({
       id: "cal-1",
       owner_id: "user-1",
+      name: "Personal",
       type: "native",
       source: "native",
     });

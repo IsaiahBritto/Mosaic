@@ -9,6 +9,7 @@ import { setCalendarVisibility } from "@/lib/actions/calendars";
 import { setDayViewMode } from "@/lib/actions/views";
 import { useAvailabilityDisplay } from "@/components/calendar/AvailabilityDisplayContext";
 import { CalendarList } from "@/components/calendar/CalendarList";
+import { SharedCalendarPanel } from "@/components/calendar/SharedCalendarPanel";
 import { useToast } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
 import { formatDateParam } from "@/lib/calendar/date-params";
@@ -47,6 +48,7 @@ export function MonthCalendarSection({
   const [collapsed, setCollapsed] = useState(false);
   const [collapsePrefReady, setCollapsePrefReady] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
+  const [sharedCalendar, setSharedCalendar] = useState<Calendar | null>(null);
   const dateParam = formatDateParam(selectedDate);
   const calendarDateParam =
     displayTimezone != null
@@ -147,6 +149,7 @@ export function MonthCalendarSection({
           visibleIds={visibleIds}
           onToggle={handleCalendarVisibilityToggle}
           onEdit={setEditingCalendar}
+          onSharedClick={setSharedCalendar}
           compact
           hideGroupHeaders
           showSharedBadge
@@ -224,6 +227,12 @@ export function MonthCalendarSection({
       {calendarsToolbar}
 
       {expandablePanel}
+
+      <SharedCalendarPanel
+        calendarId={sharedCalendar?.id ?? null}
+        calendarName={sharedCalendar?.name}
+        onClose={() => setSharedCalendar(null)}
+      />
     </div>
   );
 }

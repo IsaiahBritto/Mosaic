@@ -23,4 +23,12 @@ export const leaveCalendarSchema = z.object({
   calendarId: z.string().uuid(),
 });
 
+export const getCalendarSharingDetailsSchema = z.object({
+  calendarId: z.string().uuid(),
+});
+
+export const dismissNotificationSchema = z.object({
+  notificationId: z.string().uuid(),
+});
+
 export type InviteToCalendarInput = z.infer<typeof inviteToCalendarSchema>;

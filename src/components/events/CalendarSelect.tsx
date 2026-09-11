@@ -1,5 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import type { WritableCalendarOption } from "@/types/event";
 import { ColorBar } from "@/components/ui/ColorBar";
+import { SharedBadge } from "@/components/calendar/SharedBadge";
+import { SharedCalendarPanel } from "@/components/calendar/SharedCalendarPanel";
+import { isSharedCalendar } from "@/lib/calendar/shared";
 import { cn } from "@/lib/utils/cn";
 
 type CalendarSelectProps = {
@@ -17,41 +23,66 @@ export function CalendarSelect({
   error,
   className,
 }: CalendarSelectProps) {
+  const [sharedCalendarId, setSharedCalendarId] = useState<string | null>(null);
   const selected = calendars.find((c) => c.id === value);
+  const showSharedBadge =
+    selected != null &&
+    selected.type != null &&
+    selected.role != null &&
+    isSharedCalendar({
+      type: selected.type,
+      role: selected.role,
+    });
 
   return (
-    <div
-      className={cn(
-        "flex items-stretch gap-3 rounded-lg bg-surface/60 px-3 py-3",
-        className,
-      )}
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <label htmlFor="calendar" className="text-xs uppercase tracking-wide text-text-secondary">
-          Calendar
-        </label>
-        <select
-          id="calendar"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            "w-full rounded-lg bg-background px-3 py-2.5 text-sm uppercase tracking-wide text-text-primary",
-            "outline-none ring-1 ring-transparent focus:ring-accent/50",
-            error && "ring-status-busy/50",
-          )}
-        >
-          {calendars.map((calendar) => (
-            <option key={calendar.id} value={calendar.id}>
-              {calendar.name}
-            </option>
-          ))}
-        </select>
-        {error ? <p className="text-xs text-status-busy">{error}</p> : null}
+    <>
+      <div
+        className={cn(
+          "flex items-stretch gap-3 rounded-lg bg-surface/60 px-3 py-3",
+          className,
+        )}
+      >
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="calendar"
+              className="text-xs uppercase tracking-wide text-text-secondary"
+            >
+              Calendar
+            </label>
+            {showSharedBadge ? (
+              <SharedBadge onClick={() => setSharedCalendarId(selected.id)} />
+            ) : null}
+          </div>
+          <select
+            id="calendar"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={cn(
+              "w-full rounded-lg bg-background px-3 py-2.5 text-sm uppercase tracking-wide text-text-primary",
+              "outline-none ring-1 ring-transparent focus:ring-accent/50",
+              error && "ring-status-busy/50",
+            )}
+          >
+            {calendars.map((calendar) => (
+              <option key={calendar.id} value={calendar.id}>
+                {calendar.name}
+              </option>
+            ))}
+          </select>
+          {error ? <p className="text-xs text-status-busy">{error}</p> : null}
+        </div>
+        <ColorBar
+          color={selected?.colorHex ?? "#9379E0"}
+          className="w-2 rounded-sm"
+        />
       </div>
-      <ColorBar
-        color={selected?.colorHex ?? "#9379E0"}
-        className="w-2 rounded-sm"
+
+      <SharedCalendarPanel
+        calendarId={sharedCalendarId}
+        calendarName={calendars.find((c) => c.id === sharedCalendarId)?.name}
+        onClose={() => setSharedCalendarId(null)}
       />
-    </div>
+    </>
   );
 }

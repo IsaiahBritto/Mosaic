@@ -518,7 +518,15 @@ export async function fetchWritableCalendars(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<
-  { id: string; name: string; color_hex: string; source: string; read_only: boolean }[]
+  {
+    id: string;
+    name: string;
+    color_hex: string;
+    source: string;
+    type: string;
+    role: CalendarRole;
+    read_only: boolean;
+  }[]
 > {
   const { data, error } = await supabase
     .from("calendar_members")
@@ -530,6 +538,7 @@ export async function fetchWritableCalendars(
         name,
         color_hex,
         source,
+        type,
         external_calendar_access_role
       )
     `,
@@ -543,28 +552,31 @@ export async function fetchWritableCalendars(
   }
 
   type Row = {
+    role: CalendarRole;
     calendars: {
       id: string;
       name: string;
       color_hex: string;
       source: string;
+      type: string;
       external_calendar_access_role: string | null;
     } | null;
   };
 
   return ((data ?? []) as unknown as Row[])
-    .map((row) => row.calendars)
-    .filter((cal): cal is NonNullable<Row["calendars"]> => Boolean(cal))
+    .filter((row) => row.calendars != null)
     .filter(
-      (cal) =>
-        cal.external_calendar_access_role !== "reader" &&
-        cal.external_calendar_access_role !== "freeBusyReader",
+      (row) =>
+        row.calendars!.external_calendar_access_role !== "reader" &&
+        row.calendars!.external_calendar_access_role !== "freeBusyReader",
     )
-    .map((cal) => ({
-      id: cal.id,
-      name: cal.name,
-      color_hex: cal.color_hex,
-      source: cal.source ?? "native",
+    .map((row) => ({
+      id: row.calendars!.id,
+      name: row.calendars!.name,
+      color_hex: row.calendars!.color_hex,
+      source: row.calendars!.source ?? "native",
+      type: row.calendars!.type,
+      role: row.role,
       read_only: false,
     }));
 }

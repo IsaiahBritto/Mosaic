@@ -72,6 +72,8 @@ export async function getWritableCalendarOptions(
     name: row.name,
     colorHex: row.color_hex,
     source: row.source as WritableCalendarOption["source"],
+    type: row.type as WritableCalendarOption["type"],
+    role: row.role,
   }));
 }
 

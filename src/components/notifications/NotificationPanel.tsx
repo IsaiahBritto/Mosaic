@@ -5,6 +5,7 @@ import { getNotifications } from "@/lib/actions/notifications";
 import type { NotificationsFeed } from "@/lib/services/notifications.service";
 import { FriendRequestsGroup } from "@/components/notifications/FriendRequestsGroup";
 import { CalendarInviteGroup } from "@/components/notifications/CalendarInviteGroup";
+import { ActivityNotificationGroup } from "@/components/notifications/ActivityNotificationGroup";
 
 type NotificationPanelProps = {
   open: boolean;
@@ -62,7 +63,8 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
     !isPending &&
     feed !== null &&
     feed.friendRequests.length === 0 &&
-    feed.calendarInvites.length === 0;
+    feed.calendarInvites.length === 0 &&
+    feed.activity.length === 0;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -105,6 +107,10 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               />
               <CalendarInviteGroup
                 invites={feed.calendarInvites}
+                onChanged={loadNotifications}
+              />
+              <ActivityNotificationGroup
+                notifications={feed.activity}
                 onChanged={loadNotifications}
               />
             </>
