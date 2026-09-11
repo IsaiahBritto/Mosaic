@@ -4,6 +4,7 @@ import {
   buildCalendarDots,
   computeDayAvailability,
   computeRangeAvailability,
+  getMiniMonthCells,
   getMonthGridDates,
   isDateInMonth,
 } from "@/lib/calendar/availability";
@@ -210,7 +211,7 @@ describe("computeRangeAvailability", () => {
 });
 
 describe("getMonthGridDates", () => {
-  it("builds a Sun-first 42 day grid around the month in display timezone", () => {
+  it("builds a Sun-first grid with the minimum week rows for the month", () => {
     const grid = getMonthGridDates("2026-08-19", CHICAGO);
 
     expect(grid).toHaveLength(42);
@@ -218,6 +219,15 @@ describe("getMonthGridDates", () => {
     expect(grid.at(-1)).toBe("2026-09-05");
     expect(grid).toContain("2026-08-01");
     expect(grid).toContain("2026-08-31");
+  });
+
+  it("uses five weeks for September 2026 and ends on the Saturday after the 30th", () => {
+    const grid = getMonthGridDates("2026-09-11", CHICAGO);
+
+    expect(grid).toHaveLength(35);
+    expect(grid.at(-1)).toBe("2026-10-03");
+    expect(grid).not.toContain("2026-10-04");
+    expect(grid).toContain("2026-09-30");
   });
 
   it("starts every row boundary on a Sunday", () => {
@@ -232,6 +242,41 @@ describe("getMonthGridDates", () => {
     expect(getMonthGridDates("2026-08-01", CHICAGO)).toEqual(
       getMonthGridDates("2026-08-31", CHICAGO),
     );
+  });
+});
+
+describe("getMiniMonthCells", () => {
+  it("includes only in-month days for September 2026 with leading empties", () => {
+    const cells = getMiniMonthCells("2026-09-01", CHICAGO);
+    const dayCells = cells.filter((cell) => cell.type === "day");
+
+    expect(cells).toHaveLength(32);
+    expect(cells.filter((cell) => cell.type === "empty")).toHaveLength(2);
+    expect(dayCells).toHaveLength(30);
+    expect(dayCells[0]).toEqual({ type: "day", dateParam: "2026-09-01" });
+    expect(dayCells.at(-1)).toEqual({ type: "day", dateParam: "2026-09-30" });
+    expect(dayCells.some((cell) => cell.dateParam.startsWith("2026-10-"))).toBe(
+      false,
+    );
+    expect(dayCells.some((cell) => cell.dateParam.startsWith("2026-08-"))).toBe(
+      false,
+    );
+  });
+
+  it("aligns the first day to the correct weekday column", () => {
+    const cells = getMiniMonthCells("2026-09-01", CHICAGO);
+    const firstDayIndex = cells.findIndex((cell) => cell.type === "day");
+
+    expect(firstDayIndex).toBe(2);
+    expect(getCalendarDayOfWeek("2026-09-01", CHICAGO)).toBe(2);
+  });
+
+  it("includes only in-month days for January 2026 with no trailing padding", () => {
+    const cells = getMiniMonthCells("2026-01-01", CHICAGO);
+
+    expect(cells).toHaveLength(35);
+    expect(cells.filter((cell) => cell.type === "empty")).toHaveLength(4);
+    expect(cells.at(-1)).toEqual({ type: "day", dateParam: "2026-01-31" });
   });
 });
 

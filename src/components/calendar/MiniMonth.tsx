@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import {
-  getMonthGridDates,
-  isDateInMonth,
+  getMiniMonthCells,
   statusCellClass,
   type DayAvailability,
 } from "@/lib/calendar/availability";
@@ -24,14 +23,14 @@ export function MiniMonth({
   availabilityMap,
   timezone,
 }: MiniMonthProps) {
-  const dates = getMonthGridDates(monthDateParam, timezone);
+  const cells = getMiniMonthCells(monthDateParam, timezone);
+  const monthPrefix = monthDateParam.slice(0, 7);
   const monthName = formatInTimeZone(
     parseCalendarDateParam(monthDateParam, timezone),
     timezone,
     "MMMM",
   ).toUpperCase();
-  const isCurrentMonth =
-    monthDateParam.slice(0, 7) === todayDateParam.slice(0, 7);
+  const isCurrentMonth = monthPrefix === todayDateParam.slice(0, 7);
 
   return (
     <Link
@@ -56,22 +55,31 @@ export function MiniMonth({
         ))}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
-        {dates.map((dateParam) => {
-          const availability = availabilityMap.get(dateParam);
+        {cells.map((cell, index) => {
+          if (cell.type === "empty") {
+            return (
+              <span
+                key={`empty-${monthPrefix}-${index}`}
+                className="h-4"
+                aria-hidden
+              />
+            );
+          }
+
+          const availability = availabilityMap.get(cell.dateParam);
           const status = availability?.status ?? "free";
-          const isToday = dateParam === todayDateParam;
+          const isToday = cell.dateParam === todayDateParam;
 
           return (
             <span
-              key={dateParam}
+              key={cell.dateParam}
               className={cn(
                 "flex h-4 items-center justify-center rounded-sm text-[9px]",
                 statusCellClass(status),
-                !isDateInMonth(dateParam, monthDateParam) && "opacity-30",
                 isToday && "ring-1 ring-accent text-accent",
               )}
             >
-              {Number(dateParam.slice(8))}
+              {Number(cell.dateParam.slice(8))}
             </span>
           );
         })}

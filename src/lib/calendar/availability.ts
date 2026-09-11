@@ -13,6 +13,7 @@ import {
   getCalendarDayOfWeek,
   getCalendarDayUtcRange,
   parseCalendarDateParam,
+  shiftCalendarDateParam,
 } from "@/lib/calendar/timezone";
 import type { EventInstance } from "@/types/event";
 
@@ -257,18 +258,60 @@ export function computeRangeAvailability(
   return map;
 }
 
-/** Sun-first 6x7 grid of calendar date params covering the given month. */
+/** Sun-first grid (5–6 week rows) of calendar date params covering the given month. */
 export function getMonthGridDates(
   monthDateParam: string,
   timezone: string,
 ): string[] {
   const firstOfMonth = `${monthDateParam.slice(0, 7)}-01`;
   const startOffset = getCalendarDayOfWeek(firstOfMonth, timezone);
+  const lastOfMonth = addCalendarDays(
+    shiftCalendarDateParam(firstOfMonth, "month", 1, timezone),
+    -1,
+    timezone,
+  );
+  const daysInMonth = Number(lastOfMonth.slice(8));
+  const weeksNeeded = Math.ceil((startOffset + daysInMonth) / 7);
+  const length = weeksNeeded * 7;
   const gridStart = addCalendarDays(firstOfMonth, -startOffset, timezone);
 
-  return Array.from({ length: 42 }, (_, index) =>
+  return Array.from({ length }, (_, index) =>
     addCalendarDays(gridStart, index, timezone),
   );
+}
+
+export type MiniMonthCell =
+  | { type: "day"; dateParam: string }
+  | { type: "empty" };
+
+/** Sun-first mini-month grid: leading empties + in-month days only. No trailing padding. */
+export function getMiniMonthCells(
+  monthDateParam: string,
+  timezone: string,
+): MiniMonthCell[] {
+  const monthPrefix = monthDateParam.slice(0, 7);
+  const firstOfMonth = `${monthPrefix}-01`;
+  const startOffset = getCalendarDayOfWeek(firstOfMonth, timezone);
+  const lastOfMonth = addCalendarDays(
+    shiftCalendarDateParam(firstOfMonth, "month", 1, timezone),
+    -1,
+    timezone,
+  );
+  const daysInMonth = Number(lastOfMonth.slice(8));
+  const cells: MiniMonthCell[] = [];
+
+  for (let index = 0; index < startOffset; index++) {
+    cells.push({ type: "empty" });
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push({
+      type: "day",
+      dateParam: `${monthPrefix}-${String(day).padStart(2, "0")}`,
+    });
+  }
+
+  return cells;
 }
 
 export function isDateInMonth(
