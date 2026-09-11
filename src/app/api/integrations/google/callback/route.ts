@@ -6,7 +6,9 @@ import {
 } from "@/lib/integrations/google/oauth";
 import { parseGoogleIdToken } from "@/lib/integrations/google/id-token";
 import { verifyOAuthState } from "@/lib/integrations/oauth-state";
+import { syncGoogleConnection } from "@/lib/integrations/google/sync";
 import { saveGoogleConnection } from "@/lib/integrations/sync.service";
+import { fetchConnectionById } from "@/lib/repositories/connections.repository";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -48,6 +50,48 @@ export async function GET(request: Request) {
       if (parsed.email) {
         accountEmail = parsed.email;
       }
+    }
+
+    if (verified.reconnectConnectionId) {
+      const existing = await fetchConnectionById(
+        supabase,
+        verified.reconnectConnectionId,
+      );
+
+      if (
+        !existing ||
+        existing.user_id !== user.id ||
+        existing.provider !== "google"
+      ) {
+        return NextResponse.redirect(
+          new URL("/calendars?error=google_auth_failed", baseUrl),
+        );
+      }
+
+      if (existing.provider_account_id !== accountId) {
+        return NextResponse.redirect(
+          new URL("/calendars?error=google_account_mismatch", baseUrl),
+        );
+      }
+
+      const connectionId = await saveGoogleConnection(
+        supabase,
+        user.id,
+        accountEmail,
+        accountId,
+        tokens.accessToken,
+        tokens.refreshToken,
+        tokens.expiresIn,
+      );
+
+      await syncGoogleConnection(supabase, connectionId, { force: true });
+
+      return NextResponse.redirect(
+        new URL(
+          `/calendars?reconnected=google&connectionId=${connectionId}`,
+          baseUrl,
+        ),
+      );
     }
 
     const connectionId = await saveGoogleConnection(

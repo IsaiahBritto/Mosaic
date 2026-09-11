@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GoogleCalendarClient } from "@/lib/integrations/google/client";
+import { normalizeGoogleCalendarLabel } from "@/lib/integrations/google/calendar-display";
 import { mapGoogleColor } from "@/lib/integrations/google/event-map";
 import { getGoogleTokens } from "@/lib/integrations/google/token-store";
 import type { SelectedGoogleCalendar } from "@/lib/integrations/sync-types";
@@ -13,7 +14,7 @@ export async function listGoogleCalendarsForConnection(
   supabase: SupabaseClient,
   userId: string,
   connectionId: string,
-) {
+): Promise<{ accountEmail: string; calendars: Awaited<ReturnType<GoogleCalendarClient["listCalendars"]>> }> {
   const connection = await fetchConnectionById(supabase, connectionId);
   if (!connection || connection.user_id !== userId || connection.provider !== "google") {
     throw new Error("Connection not found");
@@ -21,7 +22,11 @@ export async function listGoogleCalendarsForConnection(
 
   const { accessToken } = await getGoogleTokens(supabase, connectionId);
   const client = new GoogleCalendarClient(accessToken);
-  return client.listCalendars();
+  const calendars = await client.listCalendars();
+  return {
+    accountEmail: connection.provider_account_email,
+    calendars,
+  };
 }
 
 export async function saveSelectedGoogleCalendars(
@@ -111,14 +116,16 @@ export function mapSelectedCalendars(
     summary: string;
     backgroundColor?: string;
     accessRole: string;
+    primary?: boolean;
   }>,
   selectedIds: string[],
+  accountEmail: string,
 ): SelectedGoogleCalendar[] {
   return items
     .filter((item) => selectedIds.includes(item.id))
     .map((item) => ({
       externalCalendarId: item.id,
-      name: item.summary,
+      name: normalizeGoogleCalendarLabel(item, accountEmail),
       colorHex: mapGoogleColor(item.backgroundColor),
       accessRole: item.accessRole,
     }));

@@ -58,14 +58,22 @@ export function GoogleConnectSection({ connections }: GoogleConnectSectionProps)
                   </span>
                 ) : null}
               </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={isPending}
-                onClick={() => handleDisconnect(connection.id)}
-              >
-                Disconnect
-              </Button>
+              <div className="flex shrink-0 gap-2">
+                <Link
+                  href={`/api/integrations/google/connect?connectionId=${encodeURIComponent(connection.id)}`}
+                  className="text-xs uppercase text-accent hover:underline"
+                >
+                  Reconnect
+                </Link>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isPending}
+                  onClick={() => handleDisconnect(connection.id)}
+                >
+                  Disconnect
+                </Button>
+              </div>
             </li>
           ))}
         </ul>

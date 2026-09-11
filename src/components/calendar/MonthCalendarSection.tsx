@@ -3,14 +3,20 @@
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { Calendar, CalendarGroup } from "@/types/calendar";
+import type { Calendar, SidebarItem } from "@/types/calendar";
 import { EditCalendarDialog } from "@/components/calendar/EditCalendarDialog";
-import { setCalendarVisibility } from "@/lib/actions/calendars";
+import { EditLinkedAccountDialog } from "@/components/calendar/EditLinkedAccountDialog";
+import { ReorderCalendarList } from "@/components/calendar/ReorderCalendarList";
+import { SidebarCalendarList } from "@/components/calendar/SidebarCalendarList";
+import { saveSidebarCalendarOrder, setCalendarVisibility } from "@/lib/actions/calendars";
+import type { SidebarCalendarOrder } from "@/lib/calendar/sidebar-order";
+import { useConnectionCollapse } from "@/hooks/useConnectionCollapse";
 import { setDayViewMode } from "@/lib/actions/views";
 import { useAvailabilityDisplay } from "@/components/calendar/AvailabilityDisplayContext";
-import { CalendarList } from "@/components/calendar/CalendarList";
 import { SharedCalendarPanel } from "@/components/calendar/SharedCalendarPanel";
 import { useToast } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
+import { CollapseChevron } from "@/components/ui/CollapseChevron";
 import { Toggle } from "@/components/ui/Toggle";
 import { formatDateParam } from "@/lib/calendar/date-params";
 import { formatCalendarDate } from "@/lib/calendar/timezone";
@@ -20,7 +26,8 @@ import { cn } from "@/lib/utils/cn";
 const COLLAPSED_KEY = "mosaic-month-calendars-collapsed";
 
 type MonthCalendarSectionProps = {
-  groups: CalendarGroup[];
+  sidebarItems: SidebarItem[];
+  sidebarOrder: SidebarCalendarOrder;
   visibleIds: string[];
   selectedDate: Date;
   showEmptyHint?: boolean;
@@ -30,7 +37,8 @@ type MonthCalendarSectionProps = {
 };
 
 export function MonthCalendarSection({
-  groups,
+  sidebarItems,
+  sidebarOrder,
   visibleIds,
   selectedDate,
   showEmptyHint = false,
@@ -48,7 +56,15 @@ export function MonthCalendarSection({
   const [collapsed, setCollapsed] = useState(false);
   const [collapsePrefReady, setCollapsePrefReady] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
+  const [editingConnection, setEditingConnection] = useState<{
+    id: string;
+    providerAccountEmail: string;
+    displayName: string | null;
+  } | null>(null);
   const [sharedCalendar, setSharedCalendar] = useState<Calendar | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draftOrder, setDraftOrder] = useState<SidebarCalendarOrder>(sidebarOrder);
+  const { isCollapsed, toggleCollapsed } = useConnectionCollapse();
   const dateParam = formatDateParam(selectedDate);
   const calendarDateParam =
     displayTimezone != null
@@ -86,6 +102,48 @@ export function MonthCalendarSection({
     });
   }
 
+  useEffect(() => {
+    if (!reorderMode) {
+      setDraftOrder(sidebarOrder);
+    }
+  }, [sidebarOrder, reorderMode]);
+
+  function handleStartReorder() {
+    setDraftOrder(sidebarOrder);
+    setReorderMode(true);
+  }
+
+  function handleCancelReorder() {
+    setDraftOrder(sidebarOrder);
+    setReorderMode(false);
+  }
+
+  function handleSaveReorder() {
+    startTransition(async () => {
+      const result = await saveSidebarCalendarOrder({ items: draftOrder.items });
+      if (!result.success) {
+        showToast(result.message, "error");
+        return;
+      }
+      showToast("Calendar order saved");
+      setReorderMode(false);
+      router.refresh();
+    });
+  }
+
+  function handleToggleGroup(calendarIds: string[], visible: boolean) {
+    startTransition(async () => {
+      for (const calendarId of calendarIds) {
+        const result = await setCalendarVisibility({ calendarId, visible });
+        if (!result.success) {
+          showToast(result.message, "error");
+          return;
+        }
+      }
+      router.refresh();
+    });
+  }
+
   function handleViewModeToggle(checked: boolean) {
     const mode = checked ? "agenda" : "timeline";
     const params = new URLSearchParams(searchParams.toString());
@@ -107,11 +165,11 @@ export function MonthCalendarSection({
   const expandablePanel = (
     <div
       className={cn(
-        "overflow-hidden transition-all duration-200 ease-out",
+        "flex flex-col overflow-hidden transition-all duration-200 ease-out",
         collapsed ? "max-h-0 opacity-0" : "max-h-[32rem] opacity-100",
       )}
     >
-      <div className="space-y-4 px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto px-4 pt-4 pb-2">
         <div
           className={cn(
             "grid grid-cols-2 rounded-full bg-surface p-0.5 text-[10px] font-bold uppercase tracking-wide",
@@ -144,16 +202,40 @@ export function MonthCalendarSection({
           </button>
         </div>
 
-        <CalendarList
-          groups={groups}
-          visibleIds={visibleIds}
-          onToggle={handleCalendarVisibilityToggle}
-          onEdit={setEditingCalendar}
-          onSharedClick={setSharedCalendar}
-          compact
-          hideGroupHeaders
-          showSharedBadge
-        />
+        {reorderMode ? (
+          <ReorderCalendarList
+            items={sidebarItems}
+            order={draftOrder}
+            onOrderChange={setDraftOrder}
+          />
+        ) : (
+          <>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleStartReorder}
+                className="text-xs uppercase tracking-wide text-accent hover:underline"
+              >
+                Edit order
+              </button>
+            </div>
+            <SidebarCalendarList
+              items={sidebarItems}
+              visibleIds={visibleIds}
+              onToggle={handleCalendarVisibilityToggle}
+              onToggleGroup={handleToggleGroup}
+              onEditConnectionLabel={(connectionId, providerAccountEmail, displayName) =>
+                setEditingConnection({ id: connectionId, providerAccountEmail, displayName })
+              }
+              onEdit={setEditingCalendar}
+              onSharedClick={setSharedCalendar}
+              isConnectionCollapsed={isCollapsed}
+              onToggleConnectionCollapse={toggleCollapsed}
+              compact
+              showSharedBadge
+            />
+          </>
+        )}
 
         {showEmptyHint ? (
           <p className="text-center text-sm text-text-secondary">
@@ -161,24 +243,51 @@ export function MonthCalendarSection({
           </p>
         ) : null}
 
-        {editingCalendar ? (
-          <EditCalendarDialog
-            calendar={editingCalendar}
-            onClose={() => setEditingCalendar(null)}
-          />
-        ) : null}
-
         {isPending ? (
           <p className="text-center text-xs text-text-secondary">Updating…</p>
         ) : null}
-
-        <Link
-          href="/calendars"
-          className="block rounded-full bg-surface py-3 text-center text-sm text-accent ring-1 ring-accent/20"
-        >
-          New Calendar
-        </Link>
       </div>
+
+      <div className="shrink-0 border-t border-surface/60 px-4 py-3">
+        {reorderMode ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleSaveReorder} disabled={isPending}>
+              {isPending ? "Saving…" : "Done"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancelReorder}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Link
+            href="/calendars"
+            className="block rounded-full bg-surface py-3 text-center text-sm text-accent ring-1 ring-accent/20"
+          >
+            New Calendar
+          </Link>
+        )}
+      </div>
+
+      {editingCalendar ? (
+        <EditCalendarDialog
+          calendar={editingCalendar}
+          onClose={() => setEditingCalendar(null)}
+        />
+      ) : null}
+
+      {editingConnection ? (
+        <EditLinkedAccountDialog
+          connectionId={editingConnection.id}
+          providerAccountEmail={editingConnection.providerAccountEmail}
+          displayName={editingConnection.displayName}
+          onClose={() => setEditingConnection(null)}
+        />
+      ) : null}
     </div>
   );
 
@@ -207,8 +316,8 @@ export function MonthCalendarSection({
           <span className="text-sm font-bold uppercase tracking-wide text-text-secondary">
             Calendars
           </span>
-          <span className="absolute left-full ml-1.5 inset-y-0 flex items-center text-xs leading-none text-text-secondary">
-            {collapsed ? "▼" : "▲"}
+          <span className="absolute left-full ml-1.5 inset-y-0 flex items-center">
+            <CollapseChevron collapsed={collapsed} />
           </span>
         </span>
       </button>

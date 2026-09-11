@@ -35,7 +35,11 @@ export async function POST(request: Request) {
       user.id,
       body.connectionId,
     );
-    const selected = mapSelectedCalendars(remote, body.selectedCalendarIds);
+    const selected = mapSelectedCalendars(
+      remote.calendars,
+      body.selectedCalendarIds,
+      remote.accountEmail,
+    );
     const calendarIds = await saveSelectedGoogleCalendars(
       supabase,
       user.id,

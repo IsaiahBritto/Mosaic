@@ -6,6 +6,7 @@ export type CalendarConnection = {
   provider: IntegrationProvider;
   providerAccountId: string;
   providerAccountEmail: string;
+  displayName: string | null;
   lastSyncAt: string | null;
   lastSyncStatus: "ok" | "error" | "syncing" | null;
   lastSyncError: string | null;

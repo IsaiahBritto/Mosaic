@@ -16,6 +16,11 @@ import {
 } from "@/lib/integrations/sync.service";
 import type { CalendarConnection } from "@/lib/integrations/types";
 import type { ResyncResult } from "@/lib/integrations/sync-types";
+import { updateConnectionDisplayNameSchema } from "@/lib/validation/integrations";
+import {
+  fetchConnectionById,
+  updateConnectionDisplayName,
+} from "@/lib/repositories/connections.repository";
 
 const appleConnectSchema = z.object({
   appleId: z.string().email(),
@@ -140,6 +145,53 @@ export async function disconnectAppleConnection(
     return actionError(
       "UNKNOWN",
       error instanceof Error ? error.message : "Disconnect failed",
+    );
+  }
+}
+
+export async function updateGoogleConnectionDisplayName(input: {
+  connectionId: string;
+  displayName: string | null;
+}): Promise<ActionResult<null>> {
+  const parsed = updateConnectionDisplayNameSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return actionError("UNAUTHORIZED", "You must be signed in");
+  }
+
+  try {
+    const connection = await fetchConnectionById(supabase, parsed.data.connectionId);
+    if (!connection || connection.user_id !== user.id) {
+      return actionError("NOT_FOUND", "Connection not found");
+    }
+    if (connection.provider !== "google") {
+      return actionError("FORBIDDEN", "Only Google connections can be renamed");
+    }
+
+    await updateConnectionDisplayName(
+      supabase,
+      user.id,
+      parsed.data.connectionId,
+      parsed.data.displayName,
+    );
+
+    revalidatePath("/calendars");
+    revalidatePath("/week");
+    revalidatePath("/month");
+    revalidatePath("/year");
+    return actionSuccess(null);
+  } catch (error) {
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Update failed",
     );
   }
 }

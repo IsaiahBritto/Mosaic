@@ -3,6 +3,11 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { GoogleCalendarListItem } from "@/lib/integrations/sync-types";
+import {
+  getAccountHeaderState,
+  normalizeGoogleCalendarLabel,
+} from "@/lib/integrations/google/calendar-display";
+import { LinkedAccountCalendarGroup } from "@/components/calendar/LinkedAccountCalendarGroup";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -19,6 +24,7 @@ export function GoogleCalendarPicker({
 }: GoogleCalendarPickerProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const [accountEmail, setAccountEmail] = useState("");
   const [calendars, setCalendars] = useState<GoogleCalendarListItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +39,7 @@ export function GoogleCalendarPicker({
           `/api/integrations/google/calendars?connectionId=${encodeURIComponent(connectionId)}`,
         );
         const data = (await response.json()) as {
+          accountEmail?: string;
           calendars?: GoogleCalendarListItem[];
           error?: string;
         };
@@ -43,6 +50,7 @@ export function GoogleCalendarPicker({
 
         if (!cancelled) {
           const items = data.calendars ?? [];
+          setAccountEmail(data.accountEmail ?? "");
           setCalendars(items);
           const defaults = items
             .filter((c) => c.primary || c.selected)
@@ -67,10 +75,17 @@ export function GoogleCalendarPicker({
     };
   }, [connectionId, showToast]);
 
+  const childIds = calendars.map((c) => c.id);
+  const { allSelected } = getAccountHeaderState(selected, childIds);
+
   function toggle(id: string) {
     setSelected((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     );
+  }
+
+  function toggleAll(selectAll: boolean) {
+    setSelected(selectAll ? childIds : []);
   }
 
   function handleSave() {
@@ -109,26 +124,40 @@ export function GoogleCalendarPicker({
       <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-text-secondary">
         Select calendars to import
       </h4>
-      <div className="mb-4 max-h-48 space-y-2 overflow-y-auto">
-        {calendars.map((calendar) => (
-          <label
-            key={calendar.id}
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
-          >
-            <Checkbox
-              checked={selected.includes(calendar.id)}
-              onChange={() => toggle(calendar.id)}
-              color={calendar.backgroundColor ?? THEME.accent}
-            />
-            <span className="flex-1">{calendar.summary}</span>
-            {calendar.accessRole === "reader" ||
-            calendar.accessRole === "freeBusyReader" ? (
-              <span className="text-[10px] uppercase text-text-secondary">
-                Read-only
+      <div className="mb-4 max-h-48 overflow-y-auto">
+        <LinkedAccountCalendarGroup
+          accountEmail={accountEmail || "Google account"}
+          connectionId={connectionId}
+          headerChecked={allSelected}
+          onHeaderToggle={toggleAll}
+        >
+          {calendars.map((calendar) => (
+            <label
+              key={calendar.id}
+              className="flex cursor-pointer items-center gap-3 py-1.5 text-sm text-text-primary"
+            >
+              <Checkbox
+                checked={selected.includes(calendar.id)}
+                onChange={() => toggle(calendar.id)}
+                color={calendar.backgroundColor ?? THEME.accent}
+              />
+              <span className="flex-1">
+                {normalizeGoogleCalendarLabel(calendar, accountEmail)}
               </span>
-            ) : null}
-          </label>
-        ))}
+              {calendar.primary ? (
+                <span className="text-[10px] uppercase text-text-secondary">
+                  Primary
+                </span>
+              ) : null}
+              {calendar.accessRole === "reader" ||
+              calendar.accessRole === "freeBusyReader" ? (
+                <span className="text-[10px] uppercase text-text-secondary">
+                  Read-only
+                </span>
+              ) : null}
+            </label>
+          ))}
+        </LinkedAccountCalendarGroup>
       </div>
       <Button size="sm" onClick={handleSave} disabled={isPending}>
         {isPending ? "Importing…" : "Import selected calendars"}

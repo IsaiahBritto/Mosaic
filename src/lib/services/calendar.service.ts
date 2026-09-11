@@ -14,21 +14,38 @@ import {
   updateMemberDisplayOverrides,
 } from "@/lib/repositories/members.repository";
 import { AppError } from "@/lib/errors";
-import type { Calendar, CalendarGroup } from "@/types/calendar";
+import type { Calendar, CalendarGroup, SidebarItem } from "@/types/calendar";
+import {
+  buildSidebarItems,
+  mergeSidebarOrder,
+  type SidebarCalendarOrder,
+} from "@/lib/calendar/sidebar-order";
+import {
+  fetchSidebarCalendarOrder,
+  updateSidebarCalendarOrder,
+} from "@/lib/repositories/calendars.repository";
 import { features } from "@/lib/config/features";
 import { requireCalendarRole } from "@/lib/services/permissions.service";
+import { fetchConnectionsForUser } from "@/lib/integrations/sync.service";
+import type { CalendarConnection } from "@/lib/integrations/types";
 
-/** Group calendars for NATIVE / LINKED / SHARED sections in the UI. */
-export function groupCalendars(calendars: Calendar[]): CalendarGroup[] {
+function getConnectionHeaderLabel(connection: CalendarConnection): string {
+  if (connection.provider === "google") {
+    return connection.displayName?.trim() || connection.providerAccountEmail;
+  }
+  return connection.providerAccountEmail;
+}
+
+/** Group calendars for NATIVE / linked accounts / SHARED sections in the UI. */
+export function groupCalendars(
+  calendars: Calendar[],
+  connections: CalendarConnection[] = [],
+): CalendarGroup[] {
   const native = calendars.filter(
     (c) =>
       c.source === "native" &&
       c.type === "native" &&
       c.role === "owner",
-  );
-
-  const linked = calendars.filter(
-    (c) => c.source === "google" || c.source === "apple",
   );
 
   const shared = calendars.filter(
@@ -37,9 +54,56 @@ export function groupCalendars(calendars: Calendar[]): CalendarGroup[] {
       (c.type === "shared" || c.role !== "owner"),
   );
 
+  const linkedGroups: CalendarGroup[] = [];
+
+  for (const connection of connections) {
+    if (connection.provider !== "google" && connection.provider !== "apple") {
+      continue;
+    }
+
+    const linkedCalendars = calendars.filter(
+      (c) => c.source === connection.provider && c.connectionId === connection.id,
+    );
+
+    if (linkedCalendars.length === 0) {
+      continue;
+    }
+
+    const headerLabel = getConnectionHeaderLabel(connection);
+
+    linkedGroups.push({
+      label: connection.provider === "google" ? "LINKED_GOOGLE" : "LINKED_APPLE",
+      title: headerLabel,
+      calendars: linkedCalendars,
+      connectionId: connection.id,
+      accountEmail: headerLabel,
+      providerAccountEmail: connection.providerAccountEmail,
+      accountDisplayName:
+        connection.provider === "google" ? connection.displayName : undefined,
+      provider: connection.provider,
+      lastSyncStatus: connection.lastSyncStatus,
+      lastSyncError: connection.lastSyncError,
+    });
+  }
+
+  const unmatchedLinked = calendars.filter(
+    (c) =>
+      (c.source === "google" || c.source === "apple") &&
+      (c.connectionId == null ||
+        !connections.some((conn) => conn.id === c.connectionId)),
+  );
+
+  if (unmatchedLinked.length > 0) {
+    linkedGroups.push({
+      label: "LINKED",
+      title: "Linked",
+      calendars: unmatchedLinked,
+    });
+  }
+
   const candidates: CalendarGroup[] = [
     { label: "NATIVE", title: "Native", calendars: native },
-    { label: "LINKED", title: "Linked", calendars: linked },
+    ...linkedGroups,
     { label: "SHARED", title: "Shared", calendars: shared },
   ];
 
@@ -84,7 +148,10 @@ export function applyVisibilityToCalendars(
 export type CalendarsPageData = {
   calendars: Calendar[];
   groups: CalendarGroup[];
+  sidebarItems: SidebarItem[];
+  sidebarOrder: SidebarCalendarOrder;
   visibleIds: string[];
+  connections: CalendarConnection[];
 };
 
 export async function getCalendarsPageData(
@@ -96,11 +163,56 @@ export async function getCalendarsPageData(
   const visibleIds = resolveVisibleIds(calendars, storedVisibleIds);
   const withVisibility = applyVisibilityToCalendars(calendars, visibleIds);
 
+  let connections: CalendarConnection[] = [];
+  try {
+    connections = await fetchConnectionsForUser(supabase, userId);
+  } catch {
+    connections = [];
+  }
+
+  const groups = groupCalendars(withVisibility, connections);
+  const rawOrder = await fetchSidebarCalendarOrder(supabase, userId);
+  const parsedOrder =
+    rawOrder != null && Array.isArray(rawOrder.items)
+      ? (rawOrder as SidebarCalendarOrder)
+      : null;
+  const sidebarOrder = mergeSidebarOrder(withVisibility, connections, parsedOrder);
+  const sidebarItems = buildSidebarItems(
+    withVisibility,
+    connections,
+    sidebarOrder,
+  );
+
   return {
     calendars: withVisibility,
-    groups: groupCalendars(withVisibility),
+    groups,
+    sidebarItems,
+    sidebarOrder,
     visibleIds,
+    connections,
   };
+}
+
+export async function saveSidebarOrderForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  order: SidebarCalendarOrder,
+): Promise<SidebarCalendarOrder> {
+  const calendars = await fetchCalendarsForUser(supabase, userId);
+  let connections: CalendarConnection[] = [];
+  try {
+    connections = await fetchConnectionsForUser(supabase, userId);
+  } catch {
+    connections = [];
+  }
+
+  const merged = mergeSidebarOrder(calendars, connections, order);
+  await updateSidebarCalendarOrder(
+    supabase,
+    userId,
+    merged as unknown as Record<string, unknown>,
+  );
+  return merged;
 }
 
 export async function createCalendarForUser(

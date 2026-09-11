@@ -31,7 +31,10 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
     redirect("/login");
   }
 
-  const { groups, visibleIds } = await getCalendarsPageData(supabase, user.id);
+  const { sidebarItems, sidebarOrder, visibleIds } = await getCalendarsPageData(
+    supabase,
+    user.id,
+  );
 
   const { data: prefs } = await supabase
     .from("user_preferences")
@@ -82,7 +85,8 @@ export default async function MonthPage({ searchParams }: MonthPageProps) {
       }
       calendars={
         <MonthCalendarSection
-          groups={groups}
+          sidebarItems={sidebarItems}
+          sidebarOrder={sidebarOrder}
           visibleIds={visibleIds}
           selectedDate={selectedDate}
           variant="month"

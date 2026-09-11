@@ -18,12 +18,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const calendars = await listGoogleCalendarsForConnection(
+    const result = await listGoogleCalendarsForConnection(
       supabase,
       user.id,
       connectionId,
     );
-    return NextResponse.json({ calendars });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {

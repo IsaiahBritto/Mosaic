@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createCalendarForUser,
   deleteCalendarForUser,
+  saveSidebarOrderForUser,
   saveVisibleCalendarIds,
   setAllCalendarsVisibility,
   setSingleCalendarVisibility,
@@ -23,6 +24,7 @@ import {
   createCalendarSchema,
   deleteCalendarSchema,
   saveCalendarPreferencesSchema,
+  saveSidebarCalendarOrderSchema,
   setAllCalendarsVisibilitySchema,
   setCalendarVisibilitySchema,
   revertCalendarDisplaySchema,
@@ -289,6 +291,36 @@ export async function setAllCalendarsVisibilityAction(input: {
     return actionError(
       "UNKNOWN",
       error instanceof Error ? error.message : "Failed to update visibility",
+    );
+  }
+}
+
+export async function saveSidebarCalendarOrder(input: {
+  items: Array<
+    | { type: "calendar"; calendarId: string }
+    | { type: "connection"; connectionId: string; calendarIds: string[] }
+  >;
+}): Promise<ActionResult<null>> {
+  const parsed = saveSidebarCalendarOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Invalid input",
+    );
+  }
+
+  const auth = await getUserIdOrError();
+  if (isAuthError(auth)) return auth;
+
+  try {
+    const supabase = await createClient();
+    await saveSidebarOrderForUser(supabase, auth.userId, parsed.data);
+    revalidateCalendarViews();
+    return actionSuccess(null);
+  } catch (error) {
+    return actionError(
+      "UNKNOWN",
+      error instanceof Error ? error.message : "Failed to save calendar order",
     );
   }
 }

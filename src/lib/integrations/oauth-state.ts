@@ -17,9 +17,13 @@ type OAuthStatePayload = {
   userId: string;
   nonce: string;
   exp: number;
+  reconnectConnectionId?: string;
 };
 
-export function createOAuthState(userId: string): string {
+export function createOAuthState(
+  userId: string,
+  reconnectConnectionId?: string,
+): string {
   if (!canEncryptSecrets()) {
     throw new Error("TOKEN_ENCRYPTION_KEY is not configured");
   }
@@ -28,13 +32,16 @@ export function createOAuthState(userId: string): string {
     userId,
     nonce: randomBytes(16).toString("hex"),
     exp: Date.now() + 10 * 60 * 1000,
+    reconnectConnectionId,
   };
 
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${data}.${sign(data)}`;
 }
 
-export function verifyOAuthState(state: string): { userId: string } | null {
+export function verifyOAuthState(
+  state: string,
+): { userId: string; reconnectConnectionId?: string } | null {
   if (!canEncryptSecrets()) {
     return null;
   }
@@ -70,7 +77,10 @@ export function verifyOAuthState(state: string): { userId: string } | null {
       return null;
     }
 
-    return { userId: payload.userId };
+    return {
+      userId: payload.userId,
+      reconnectConnectionId: payload.reconnectConnectionId,
+    };
   } catch {
     return null;
   }

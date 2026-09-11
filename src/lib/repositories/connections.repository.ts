@@ -7,6 +7,7 @@ export type ConnectionRow = {
   provider: IntegrationProvider;
   provider_account_id: string;
   provider_account_email: string;
+  display_name: string | null;
   access_token_encrypted: string | null;
   refresh_token_encrypted: string | null;
   token_expires_at: string | null;
@@ -37,7 +38,7 @@ export async function fetchConnectionById(
   const { data, error } = await supabase
     .from("calendar_connections")
     .select(
-      "id, user_id, provider, provider_account_id, provider_account_email, access_token_encrypted, refresh_token_encrypted, token_expires_at, last_sync_at, last_sync_status, last_sync_error, sync_lock_until",
+      "id, user_id, provider, provider_account_id, provider_account_email, display_name, access_token_encrypted, refresh_token_encrypted, token_expires_at, last_sync_at, last_sync_status, last_sync_error, sync_lock_until",
     )
     .eq("id", connectionId)
     .maybeSingle();
@@ -57,7 +58,7 @@ export async function fetchConnectionsForUserId(
   let query = supabase
     .from("calendar_connections")
     .select(
-      "id, user_id, provider, provider_account_id, provider_account_email, access_token_encrypted, refresh_token_encrypted, token_expires_at, last_sync_at, last_sync_status, last_sync_error, sync_lock_until",
+      "id, user_id, provider, provider_account_id, provider_account_email, display_name, access_token_encrypted, refresh_token_encrypted, token_expires_at, last_sync_at, last_sync_status, last_sync_error, sync_lock_until",
     )
     .eq("user_id", userId);
 
@@ -71,6 +72,23 @@ export async function fetchConnectionsForUserId(
   }
 
   return (data ?? []) as ConnectionRow[];
+}
+
+export async function updateConnectionDisplayName(
+  supabase: SupabaseClient,
+  userId: string,
+  connectionId: string,
+  displayName: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("calendar_connections")
+    .update({ display_name: displayName })
+    .eq("id", connectionId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 export async function fetchLinkedCalendarsForConnection(

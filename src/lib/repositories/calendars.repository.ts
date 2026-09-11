@@ -126,6 +126,41 @@ export async function fetchVisibleCalendarIds(
   return (data?.visible_calendar_ids as string[] | undefined) ?? [];
 }
 
+export async function fetchSidebarCalendarOrder(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .select("sidebar_calendar_order")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data?.sidebar_calendar_order as Record<string, unknown> | null | undefined) ?? null;
+}
+
+export async function updateSidebarCalendarOrder(
+  supabase: SupabaseClient,
+  userId: string,
+  order: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({
+      sidebar_calendar_order: order,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function updateVisibleCalendarIds(
   supabase: SupabaseClient,
   userId: string,

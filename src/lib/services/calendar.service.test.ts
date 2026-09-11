@@ -6,6 +6,7 @@ import {
   resolveVisibleIds,
 } from "@/lib/services/calendar.service";
 import type { Calendar } from "@/types/calendar";
+import type { CalendarConnection } from "@/lib/integrations/types";
 
 const baseCalendar = (overrides: Partial<Calendar>): Calendar => ({
   id: "cal-1",
@@ -18,6 +19,30 @@ const baseCalendar = (overrides: Partial<Calendar>): Calendar => ({
   role: "owner",
   ...overrides,
 });
+
+const googleConnection: CalendarConnection = {
+  id: "conn-google",
+  userId: "user-1",
+  provider: "google",
+  providerAccountId: "google-sub",
+  providerAccountEmail: "user@gmail.com",
+  displayName: null,
+  lastSyncAt: null,
+  lastSyncStatus: "ok",
+  lastSyncError: null,
+};
+
+const appleConnection: CalendarConnection = {
+  id: "conn-apple",
+  userId: "user-1",
+  provider: "apple",
+  providerAccountId: "apple-id",
+  providerAccountEmail: "user@icloud.com",
+  displayName: null,
+  lastSyncAt: null,
+  lastSyncStatus: "ok",
+  lastSyncError: null,
+};
 
 describe("groupCalendars", () => {
   it("groups native owned calendars under NATIVE", () => {
@@ -64,6 +89,55 @@ describe("groupCalendars", () => {
     const labels = groups.map((g) => g.label);
     expect(new Set(labels).size).toBe(labels.length);
   });
+
+  it("groups linked calendars by connection account email", () => {
+    const calendars = [
+      baseCalendar({
+        id: "g1",
+        source: "google",
+        name: "Google Work",
+        connectionId: "conn-google",
+      }),
+      baseCalendar({
+        id: "a1",
+        source: "apple",
+        name: "iCloud Home",
+        connectionId: "conn-apple",
+      }),
+    ];
+
+    const groups = groupCalendars(calendars, [googleConnection, appleConnection]);
+    const googleGroup = groups.find((g) => g.label === "LINKED_GOOGLE");
+    const appleGroup = groups.find((g) => g.label === "LINKED_APPLE");
+
+    expect(googleGroup?.accountEmail).toBe("user@gmail.com");
+    expect(googleGroup?.providerAccountEmail).toBe("user@gmail.com");
+    expect(googleGroup?.calendars).toHaveLength(1);
+    expect(appleGroup?.accountEmail).toBe("user@icloud.com");
+    expect(appleGroup?.providerAccountEmail).toBe("user@icloud.com");
+    expect(appleGroup?.calendars).toHaveLength(1);
+  });
+
+  it("uses custom display name for Google linked group header", () => {
+    const calendars = [
+      baseCalendar({
+        id: "g1",
+        source: "google",
+        name: "Google Work",
+        connectionId: "conn-google",
+      }),
+    ];
+
+    const groups = groupCalendars(calendars, [
+      { ...googleConnection, displayName: "Personal Google" },
+    ]);
+    const googleGroup = groups.find((g) => g.label === "LINKED_GOOGLE");
+
+    expect(googleGroup?.accountEmail).toBe("Personal Google");
+    expect(googleGroup?.title).toBe("Personal Google");
+    expect(googleGroup?.providerAccountEmail).toBe("user@gmail.com");
+    expect(googleGroup?.accountDisplayName).toBe("Personal Google");
+  });
 });
 
 describe("groupCalendars with both integration flags enabled", () => {
@@ -72,7 +146,7 @@ describe("groupCalendars with both integration flags enabled", () => {
     vi.resetModules();
   });
 
-  it("merges google and apple into a single LINKED group in display order", async () => {
+  it("orders native, linked accounts, and shared in display order", async () => {
     vi.stubEnv("NEXT_PUBLIC_FEATURE_GOOGLE", "true");
     vi.stubEnv("NEXT_PUBLIC_FEATURE_APPLE", "true");
     vi.resetModules();
@@ -82,8 +156,18 @@ describe("groupCalendars with both integration flags enabled", () => {
 
     const calendars = [
       baseCalendar({ id: "n1", type: "native", role: "owner", name: "Personal" }),
-      baseCalendar({ id: "g1", source: "google", name: "Google Work" }),
-      baseCalendar({ id: "a1", source: "apple", name: "iCloud Home" }),
+      baseCalendar({
+        id: "g1",
+        source: "google",
+        name: "Google Work",
+        connectionId: "conn-google",
+      }),
+      baseCalendar({
+        id: "a1",
+        source: "apple",
+        name: "iCloud Home",
+        connectionId: "conn-apple",
+      }),
       baseCalendar({
         id: "s1",
         type: "shared",
@@ -93,10 +177,16 @@ describe("groupCalendars with both integration flags enabled", () => {
       }),
     ];
 
-    const groups = groupCalendarsWithFlags(calendars);
-    expect(groups.map((g) => g.label)).toEqual(["NATIVE", "LINKED", "SHARED"]);
-    expect(groups.find((g) => g.label === "LINKED")?.calendars).toHaveLength(2);
-    expect(groups.find((g) => g.label === "SHARED")?.emptyMessage).toBeUndefined();
+    const groups = groupCalendarsWithFlags(calendars, [
+      googleConnection,
+      appleConnection,
+    ]);
+    expect(groups.map((g) => g.label)).toEqual([
+      "NATIVE",
+      "LINKED_GOOGLE",
+      "LINKED_APPLE",
+      "SHARED",
+    ]);
 
     const ordered = orderWithFlags(groups);
     expect(ordered.map((c) => c.id)).toEqual(["n1", "g1", "a1", "s1"]);

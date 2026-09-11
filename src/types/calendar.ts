@@ -29,9 +29,35 @@ export type CalendarGroup = {
   label: CalendarGroupLabel;
   title: string;
   calendars: Calendar[];
+  connectionId?: string;
+  accountEmail?: string;
+  providerAccountEmail?: string;
+  accountDisplayName?: string | null;
+  provider?: "google" | "apple";
+  lastSyncStatus?: "ok" | "error" | "syncing" | null;
+  lastSyncError?: string | null;
   disabled?: boolean;
   emptyMessage?: string;
 };
+
+export type SidebarCalendarItem = {
+  kind: "calendar";
+  calendar: Calendar;
+};
+
+export type SidebarConnectionItem = {
+  kind: "connection";
+  connectionId: string;
+  title: string;
+  provider: "google" | "apple";
+  providerAccountEmail: string;
+  accountDisplayName?: string | null;
+  lastSyncStatus?: "ok" | "error" | "syncing" | null;
+  lastSyncError?: string | null;
+  calendars: Calendar[];
+};
+
+export type SidebarItem = SidebarCalendarItem | SidebarConnectionItem;
 
 export type CalendarRow = {
   id: string;

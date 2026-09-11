@@ -2,15 +2,21 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Calendar, CalendarGroup } from "@/types/calendar";
+import type { Calendar, SidebarItem } from "@/types/calendar";
 import { EditCalendarDialog } from "@/components/calendar/EditCalendarDialog";
+import { EditLinkedAccountDialog } from "@/components/calendar/EditLinkedAccountDialog";
 import {
   deleteCalendar,
   saveCalendarPreferences,
+  saveSidebarCalendarOrder,
   setAllCalendarsVisibilityAction,
 } from "@/lib/actions/calendars";
+import type { SidebarCalendarOrder } from "@/lib/calendar/sidebar-order";
+import { useConnectionCollapse } from "@/hooks/useConnectionCollapse";
 import { AppHeader } from "@/components/shell/AppHeader";
-import { CalendarList } from "@/components/calendar/CalendarList";
+import { ReorderCalendarList } from "@/components/calendar/ReorderCalendarList";
+import { SidebarCalendarList } from "@/components/calendar/SidebarCalendarList";
+import { Button } from "@/components/ui/Button";
 import { NewCalendarForm } from "@/components/calendar/NewCalendarForm";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { THEME } from "@/lib/theme/colors";
@@ -26,24 +32,28 @@ import type { CalendarConnection } from "@/lib/integrations/types";
 import { useToast } from "@/components/ui/Toast";
 
 type CalendarsClientProps = {
-  groups: CalendarGroup[];
+  sidebarItems: SidebarItem[];
+  sidebarOrder: SidebarCalendarOrder;
   initialVisibleIds: string[];
   allCalendarIds: string[];
   exitHref: string;
   connections?: CalendarConnection[];
   connectError?: string | null;
   connectedProvider?: string | null;
+  reconnectedProvider?: string | null;
   pickerConnectionId?: string | null;
 };
 
 export function CalendarsClient({
-  groups,
+  sidebarItems,
+  sidebarOrder,
   initialVisibleIds,
   allCalendarIds,
   exitHref,
   connections = [],
   connectError = null,
   connectedProvider = null,
+  reconnectedProvider = null,
   pickerConnectionId = null,
 }: CalendarsClientProps) {
   const router = useRouter();
@@ -64,6 +74,14 @@ export function CalendarsClient({
     string | null
   >(connectedProvider === "apple" ? pickerConnectionId : null);
   const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
+  const [editingConnection, setEditingConnection] = useState<{
+    id: string;
+    providerAccountEmail: string;
+    displayName: string | null;
+  } | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draftOrder, setDraftOrder] = useState<SidebarCalendarOrder>(sidebarOrder);
+  const { isCollapsed, toggleCollapsed } = useConnectionCollapse();
 
   useEffect(() => {
     const message = integrationErrorMessage(connectError);
@@ -71,6 +89,19 @@ export function CalendarsClient({
       showToast(message, "error");
     }
   }, [connectError, showToast]);
+
+  useEffect(() => {
+    if (reconnectedProvider === "google") {
+      showToast("Google account reconnected");
+      router.refresh();
+    }
+  }, [reconnectedProvider, router, showToast]);
+
+  useEffect(() => {
+    if (!reorderMode) {
+      setDraftOrder(sidebarOrder);
+    }
+  }, [sidebarOrder, reorderMode]);
 
   useEffect(() => {
     if (connectedProvider === "google" && pickerConnectionId) {
@@ -98,6 +129,20 @@ export function CalendarsClient({
     );
   }
 
+  function handleToggleGroup(calendarIds: string[], visible: boolean) {
+    setVisibleIds((current) => {
+      if (visible) {
+        return [...new Set([...current, ...calendarIds])];
+      }
+      return current.filter((id) => !calendarIds.includes(id));
+    });
+  }
+
+  function handleManageCalendars(connectionId: string) {
+    setActiveGooglePickerId(connectionId);
+    setShowGooglePicker(true);
+  }
+
   function handleShowHideAll(checked: boolean) {
     startTransition(async () => {
       const result = await setAllCalendarsVisibilityAction({ visible: checked });
@@ -118,6 +163,29 @@ export function CalendarsClient({
       }
       showToast("Calendars saved");
       router.push(exitHref);
+      router.refresh();
+    });
+  }
+
+  function handleStartReorder() {
+    setDraftOrder(sidebarOrder);
+    setReorderMode(true);
+  }
+
+  function handleCancelReorder() {
+    setDraftOrder(sidebarOrder);
+    setReorderMode(false);
+  }
+
+  function handleSaveReorder() {
+    startTransition(async () => {
+      const result = await saveSidebarCalendarOrder({ items: draftOrder.items });
+      if (!result.success) {
+        showToast(result.message, "error");
+        return;
+      }
+      showToast("Calendar order saved");
+      setReorderMode(false);
       router.refresh();
     });
   }
@@ -163,14 +231,55 @@ export function CalendarsClient({
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-3">
-        <CalendarList
-          groups={groups}
-          visibleIds={visibleIds}
-          onToggle={handleToggle}
-          onEdit={setEditingCalendar}
-          onDelete={handleDelete}
-          showDelete
-        />
+        {reorderMode ? (
+          <>
+            <ReorderCalendarList
+              items={sidebarItems}
+              order={draftOrder}
+              onOrderChange={setDraftOrder}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={handleSaveReorder} disabled={isPending}>
+                {isPending ? "Saving…" : "Done"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancelReorder}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-2 flex justify-end px-1">
+              <button
+                type="button"
+                onClick={handleStartReorder}
+                className="text-xs uppercase tracking-wide text-accent hover:underline"
+              >
+                Edit order
+              </button>
+            </div>
+            <SidebarCalendarList
+              items={sidebarItems}
+              visibleIds={visibleIds}
+              onToggle={handleToggle}
+              onToggleGroup={handleToggleGroup}
+              onManageCalendars={handleManageCalendars}
+              onEditConnectionLabel={(connectionId, providerAccountEmail, displayName) =>
+                setEditingConnection({ id: connectionId, providerAccountEmail, displayName })
+              }
+              onEdit={setEditingCalendar}
+              onDelete={handleDelete}
+              isConnectionCollapsed={isCollapsed}
+              onToggleConnectionCollapse={toggleCollapsed}
+              showDelete
+            />
+          </>
+        )}
       </div>
 
       <NewCalendarForm />
@@ -242,6 +351,15 @@ export function CalendarsClient({
         <EditCalendarDialog
           calendar={editingCalendar}
           onClose={() => setEditingCalendar(null)}
+        />
+      ) : null}
+
+      {editingConnection ? (
+        <EditLinkedAccountDialog
+          connectionId={editingConnection.id}
+          providerAccountEmail={editingConnection.providerAccountEmail}
+          displayName={editingConnection.displayName}
+          onClose={() => setEditingConnection(null)}
         />
       ) : null}
     </div>

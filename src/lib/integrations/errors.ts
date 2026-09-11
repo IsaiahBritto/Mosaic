@@ -8,6 +8,8 @@ const INTEGRATION_ERRORS: Record<string, string> = {
     "Apple ID or app-specific password is incorrect. See the setup guide.",
   sync_in_progress: "Sync already running. Please wait.",
   invalid_state: "OAuth session expired. Try connecting again.",
+  google_account_mismatch:
+    "That Google account doesn't match the linked connection. Reconnect with the same account.",
 };
 
 export function integrationErrorMessage(

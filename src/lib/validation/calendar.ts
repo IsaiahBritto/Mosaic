@@ -33,6 +33,22 @@ export const saveCalendarPreferencesSchema = z.object({
   visibleIds: z.array(z.string().uuid()),
 });
 
+const sidebarOrderNodeSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("calendar"),
+    calendarId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.literal("connection"),
+    connectionId: z.string().uuid(),
+    calendarIds: z.array(z.string().uuid()),
+  }),
+]);
+
+export const saveSidebarCalendarOrderSchema = z.object({
+  items: z.array(sidebarOrderNodeSchema),
+});
+
 export const updateCalendarDisplaySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(50).optional(),
@@ -47,3 +63,6 @@ export const revertCalendarDisplaySchema = z.object({
 export type CreateCalendarInput = z.infer<typeof createCalendarSchema>;
 export type UpdateCalendarInput = z.infer<typeof updateCalendarSchema>;
 export type DeleteCalendarInput = z.infer<typeof deleteCalendarSchema>;
+export type SaveSidebarCalendarOrderInput = z.infer<
+  typeof saveSidebarCalendarOrderSchema
+>;

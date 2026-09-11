@@ -29,7 +29,7 @@ export default async function WeekPage({ searchParams }: WeekPageProps) {
     redirect("/login");
   }
 
-  const [{ groups, visibleIds }, { data: prefs }] = await Promise.all([
+  const [{ sidebarItems, sidebarOrder, visibleIds }, { data: prefs }] = await Promise.all([
     getCalendarsPageData(supabase, user.id),
     supabase
       .from("user_preferences")
@@ -76,7 +76,8 @@ export default async function WeekPage({ searchParams }: WeekPageProps) {
       }
       calendars={
         <MonthCalendarSection
-          groups={groups}
+          sidebarItems={sidebarItems}
+          sidebarOrder={sidebarOrder}
           visibleIds={visibleIds}
           selectedDate={selectedDate}
           variant="week"
