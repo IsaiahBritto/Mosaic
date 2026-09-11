@@ -120,8 +120,8 @@ export function LinkedAccountCalendarGroup({
       </div>
       <div
         className={cn(
-          "overflow-hidden pl-4 transition-all duration-200 ease-out",
-          collapsed ? "max-h-0 opacity-0" : "max-h-[32rem] opacity-100",
+          "pl-4 transition-all duration-200 ease-out",
+          collapsed ? "max-h-0 overflow-hidden opacity-0" : "opacity-100",
         )}
       >
         <div className="flex flex-col gap-1">{children}</div>

@@ -165,11 +165,11 @@ export function MonthCalendarSection({
   const expandablePanel = (
     <div
       className={cn(
-        "flex flex-col overflow-hidden transition-all duration-200 ease-out",
-        collapsed ? "max-h-0 opacity-0" : "max-h-[32rem] opacity-100",
+        "flex flex-col transition-all duration-200 ease-out",
+        collapsed ? "max-h-0 overflow-hidden opacity-0" : "opacity-100",
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto px-4 pt-4 pb-2">
+      <div className="flex flex-col space-y-4 px-4 pt-4 pb-2">
         <div
           className={cn(
             "grid grid-cols-2 rounded-full bg-surface p-0.5 text-[10px] font-bold uppercase tracking-wide",
